@@ -15,12 +15,16 @@ struct ProjectBrowser: View {
     @Query private var projects: [Project]
     @Query private var accounts: [Account]
 
-    /// Left column shows projects or service accounts.
-    enum Mode: String, CaseIterable { case projects = "Projects", accounts = "Accounts" }
+    /// Left column shows projects, service accounts, or the key Library.
+    enum Mode: String, CaseIterable { case projects = "Projects", accounts = "Accounts", libraries = "Libraries" }
     @State private var mode: Mode = .projects
     @State private var accountSelection: PersistentIdentifier?
     @State private var isCreatingAccount = false
     @State private var accountPendingDeletion: Account?
+    @Query(filter: #Predicate<Variable> { $0.inLibrary }) private var libraryKeys: [Variable]
+    /// Provider shown in the Library (nil = all).
+    @State private var libraryProvider: String?
+    @State private var libraryFocusRequest = 0
 
     let flow: ConnectionFlowModel
     @Binding var showNewProject: Bool
@@ -70,6 +74,11 @@ struct ProjectBrowser: View {
                                         onDelete: { accountPendingDeletion = $0 })
                                 .frame(maxHeight: .infinity)
                             accountsFooter
+                        case .libraries:
+                            LibraryProviderList(groups: LibraryGroup.make(from: libraryKeys), total: libraryKeys.count,
+                                                selection: $libraryProvider)
+                                .frame(maxHeight: .infinity)
+                            libraryFooter
                         }
                     }
                     .frame(width: proxy.size.width * 0.25)
@@ -84,6 +93,9 @@ struct ProjectBrowser: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         case .accounts:
                             accountDetail
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        case .libraries:
+                            LibraryView(groups: libraryGroupsShown, total: libraryKeys.count, focusRequest: libraryFocusRequest)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
@@ -305,6 +317,32 @@ struct ProjectBrowser: View {
     }
 
 
+    // MARK: Libraries mode
+
+    /// Groups for the right column: search filters keys (metadata only), and
+    /// a provider picked on the left narrows to that group.
+    private var libraryGroupsShown: [LibraryGroup] {
+        let groups = LibraryGroup.make(from: Library.filter(libraryKeys, query: query))
+        guard let libraryProvider else { return groups }
+        return groups.filter { $0.id == libraryProvider }
+    }
+
+    private var libraryFooter: some View {
+        Button {
+            libraryProvider = nil
+            libraryFocusRequest += 1
+        } label: {
+            Label("New Key", systemImage: "plus").frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .buttonBorderShape(.capsule)
+        .clickableCursor()
+        .padding(DS.Space.m)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+
     // MARK: Accounts mode
 
     private var accountsFooter: some View {
@@ -462,7 +500,11 @@ struct ProjectBrowser: View {
             // No tab open: show what DotFolio is tracking instead of an empty pane.
             OverviewDashboard(
                 onOpenProject: { selection = $0.persistentModelID },
-                onShowAccounts: { mode = .accounts }
+                onShowAccounts: { mode = .accounts },
+                onOpenAccount: { account in
+                    accountSelection = account.persistentModelID
+                    mode = .accounts
+                }
             )
         }
     }

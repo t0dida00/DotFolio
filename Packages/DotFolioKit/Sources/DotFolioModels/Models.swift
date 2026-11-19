@@ -239,6 +239,9 @@ public final class Variable {
     /// What the value is for ("Database", "Cache"…), see `ServiceCategory`.
     /// Shown as "Service" in the UI.
     public var serviceCategory: String = ""
+    /// A key in the user's Library: reusable, not part of any project, so
+    /// it has no environment. Grouped by provider (`serviceLabel`).
+    public var inLibrary: Bool = false
     public var createdAt: Date = Date.now
     public var updatedAt: Date = Date.now
 

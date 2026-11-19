@@ -52,16 +52,63 @@ public enum VariableEditor {
         return variable
     }
 
+    // MARK: Library
+
+    /// Adds a key to the Library (no project). Names are unique per provider,
+    /// so `API_KEY` can exist under both OpenAI and Anthropic. Same order as
+    /// `add`: the value goes to the secret store first.
+    @MainActor
+    @discardableResult
+    public static func addToLibrary(
+        key rawKey: String, value: String = "", category: String = "", provider: String = "", account: String = "", link: String = "",
+        context: ModelContext, secrets: any SecretStore
+    ) throws(Failure) -> Variable {
+        let providerName = provider.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = try validatedKey(rawKey, siblings: Library.keys(provider: providerName, context: context), excluding: nil)
+        let url = try validatedLink(link)
+
+        let variable = Variable(key: key, environment: nil)
+        variable.inLibrary = true
+        if !value.isEmpty {
+            do { try secrets.setString(value, for: variable.secretRef.uuidString) }
+            catch { throw .keychain(error as? KeychainError ?? .unexpectedStatus(-1)) }
+            variable.hasValue = true
+        }
+        variable.sourceURL = url
+        variable.serviceLabel = providerName
+        variable.serviceCategory = normalizedCategory(category)
+        context.insert(variable)
+        variable.account = findOrCreateAccount(login: account, service: providerName, context: context)
+        return variable
+    }
+
+    /// Moves a library key to another provider, keeping names unique there.
+    @MainActor
+    public static func setLibraryProvider(_ variable: Variable, to text: String, context: ModelContext) throws(Failure) {
+        let provider = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard provider != variable.serviceLabel else { return }
+        _ = try validatedKey(variable.key, siblings: Library.keys(provider: provider, context: context), excluding: variable)
+        setService(variable, to: provider)
+    }
+
     // MARK: Edit
 
+    /// Renames within the variable's scope: its environment, or for a library
+    /// key the other library keys of the same provider.
     @MainActor
     public static func rename(_ variable: Variable, to rawKey: String) throws(Failure) {
-        guard let environment = variable.environment else { return }
-        let key = try validatedKey(rawKey, in: environment, excluding: variable)
+        let key: String
+        if let environment = variable.environment {
+            key = try validatedKey(rawKey, in: environment, excluding: variable)
+        } else if variable.inLibrary, let context = variable.modelContext {
+            key = try validatedKey(rawKey, siblings: Library.keys(provider: variable.serviceLabel, context: context), excluding: variable)
+        } else {
+            return
+        }
         guard key != variable.key else { return }
         variable.key = key
         variable.updatedAt = .now
-        touch(environment)
+        if let environment = variable.environment { touch(environment) }
     }
 
     @MainActor
@@ -178,9 +225,14 @@ public enum VariableEditor {
     // MARK: Validation
 
     static func validatedKey(_ raw: String, in environment: ProjectEnvironment, excluding: Variable?) throws(Failure) -> String {
+        try validatedKey(raw, siblings: environment.variables ?? [], excluding: excluding)
+    }
+
+    /// Valid env name, not already used by one of `siblings` (other than `excluding`).
+    static func validatedKey(_ raw: String, siblings: [Variable], excluding: Variable?) throws(Failure) -> String {
         let key = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard InputValidation.isValidEnvKey(key) else { throw .invalidKey }
-        let clash = (environment.variables ?? []).contains {
+        let clash = siblings.contains {
             $0.key == key && $0.persistentModelID != excluding?.persistentModelID
         }
         if clash { throw .duplicateKey(key) }

@@ -6,7 +6,13 @@ import SwiftUI
 /// "Add variable", pinned to the bottom of the detail column.
 /// Layout: Name 30% · Value 70%, then Service 15% · Provider 15% · Account 25% · Link 45%.
 struct AddVariableCard: View {
-    let environment: ProjectEnvironment
+    /// Where new variables go.
+    enum Target {
+        case environment(ProjectEnvironment)
+        case library
+    }
+
+    let target: Target
     var nameFocused: FocusState<Bool>.Binding
 
     @Environment(\.modelContext) private var context
@@ -20,16 +26,24 @@ struct AddVariableCard: View {
     @State private var newLink = ""
     @State private var errorMessage: String?
 
+    private var isLibrary: Bool {
+        if case .library = target { return true }
+        return false
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s) {
             HStack {
-                Label("Add variable", systemImage: "plus.circle")
+                Label(isLibrary ? "Add key" : "Add variable", systemImage: "plus.circle")
                     .font(DS.Font.panelTitle)
                     .symbolMotion(.bounce)
                 Spacer()
                 HStack(spacing: DS.Space.xs) {
                     Text("to")
-                    EnvLabel(name: environment.name)
+                    switch target {
+                    case .environment(let environment): EnvLabel(name: environment.name)
+                    case .library: Label("Library", systemImage: "books.vertical")
+                    }
                 }
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -88,8 +102,14 @@ struct AddVariableCard: View {
 
     private func add() {
         do {
-            try VariableEditor.add(key: newKey, value: newValue, category: newCategory, service: newService, account: newAccount, link: newLink,
-                                   to: environment, context: context, secrets: secrets)
+            switch target {
+            case .environment(let environment):
+                try VariableEditor.add(key: newKey, value: newValue, category: newCategory, service: newService, account: newAccount,
+                                       link: newLink, to: environment, context: context, secrets: secrets)
+            case .library:
+                try VariableEditor.addToLibrary(key: newKey, value: newValue, category: newCategory, provider: newService,
+                                                account: newAccount, link: newLink, context: context, secrets: secrets)
+            }
             errorMessage = nil
             newKey = ""; newValue = ""; newCategory = ""; newService = ""; newAccount = ""; newLink = ""
             nameFocused.wrappedValue = true

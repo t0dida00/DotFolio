@@ -88,6 +88,7 @@ struct SecretsNeverInDatabaseTests {
         let project = try ProjectCreator.create(draft, includeValues: true, context: context, secrets: secrets)
         let v = try #require(project.allVariables.first)
         try VariableEditor.setValue(v, to: secret + "_rotated", secrets: secrets)
+        try VariableEditor.addToLibrary(key: "LIB_KEY", value: secret + "_library", provider: "OpenAI", context: context, secrets: secrets)
         try context.save()
 
         // Every file SwiftData wrote (store, -wal, -shm).

@@ -9,6 +9,7 @@ struct OverviewDashboard: View {
     @Query private var accounts: [Account]
     let onOpenProject: (Project) -> Void
     let onShowAccounts: () -> Void
+    let onOpenAccount: (Account) -> Void
 
     var body: some View {
         let stats = OverviewStats(projects: projects, accounts: accounts)
@@ -42,7 +43,7 @@ struct OverviewDashboard: View {
 
                 Card(title: "Accounts", subtitle: "Ranked by providers, then projects",
                      trailing: AnyView(Button("Show All", action: onShowAccounts).buttonStyle(.link).clickableCursor())) {
-                    AccountRanking(ranks: stats.accountRanking)
+                    AccountRanking(ranks: stats.accountRanking, onOpen: onOpenAccount)
                 }
 
                 HStack(alignment: .top, spacing: DS.Space.l) {
@@ -275,29 +276,42 @@ private struct EnvironmentMeters: View {
 
 /// Text-only ranking table spanning the card: #, Account, Services (names),
 /// Projects, Variables.
+/// Top 5 accounts; each row opens that account in the Accounts tab.
 private struct AccountRanking: View {
     let ranks: [OverviewStats.AccountRank]
+    let onOpen: (Account) -> Void
+
+    private enum Width {
+        static let index: CGFloat = 20
+        static let projects: CGFloat = 64
+        static let variables: CGFloat = 70
+        static let chevron: CGFloat = 10
+    }
 
     var body: some View {
         if ranks.isEmpty {
             EmptyNote(text: "Add accounts in the Accounts tab, or type an email in a variable’s Account column.")
         } else {
-            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.l, verticalSpacing: DS.Space.s) {
-                GridRow {
-                    Text("#")
-                    Text("Account")
-                    Text("Providers")
-                    Text("Projects").gridColumnAlignment(.trailing)
-                    Text("Variables").gridColumnAlignment(.trailing)
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
+                HStack(spacing: DS.Space.s) {
+                    Text("#").frame(width: Width.index, alignment: .leading)
+                    Text("Account").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Providers").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Projects").frame(width: Width.projects, alignment: .trailing)
+                    Text("Variables").frame(width: Width.variables, alignment: .trailing)
+                    Color.clear.frame(width: Width.chevron, height: 1)
                 }
                 .font(DS.Font.label)
                 .foregroundStyle(.secondary)
+                // Same inset as the rows' hover background.
+                .padding(.horizontal, DS.Space.s)
 
                 Divider()
 
                 ForEach(Array(ranks.prefix(5).enumerated()), id: \.element.id) { index, rank in
-                    GridRow {
+                    RowButton(action: { onOpen(rank.account) }) {
                         Text("\(index + 1)").monospacedDigit().foregroundStyle(.secondary)
+                            .frame(width: Width.index, alignment: .leading)
                         Text(rank.account.login)
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -307,8 +321,15 @@ private struct AccountRanking: View {
                             .lineLimit(2)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Text("\(rank.projects)").monospacedDigit()
+                            .frame(width: Width.projects, alignment: .trailing)
                         Text("\(rank.variables)").monospacedDigit()
+                            .frame(width: Width.variables, alignment: .trailing)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                            .frame(width: Width.chevron)
                     }
+                    .help("Open \(rank.account.login)")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

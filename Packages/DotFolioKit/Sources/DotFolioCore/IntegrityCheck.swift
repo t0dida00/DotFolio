@@ -55,9 +55,17 @@ public enum IntegrityCheck {
                 report.duplicateKeys.append(.init(project: env.project?.name ?? "?", environment: env.name, key: v.key))
             }
         }
+        var seenLibrary = Set<String>()
+        for v in variables where v.inLibrary {
+            let id = "\(v.serviceLabel.lowercased())|\(v.key)"
+            if !seenLibrary.insert(id).inserted {
+                report.duplicateKeys.append(.init(project: "Library", environment: v.serviceLabel.isEmpty ? "No provider" : v.serviceLabel, key: v.key))
+            }
+        }
         report.duplicateKeys = Array(Set(report.duplicateKeys)).sorted { ($0.project, $0.environment, $0.key) < ($1.project, $1.environment, $1.key) }
 
-        report.orphanVariables = variables.filter { $0.environment == nil }
+        // Library keys have no environment on purpose — never orphans.
+        report.orphanVariables = variables.filter { $0.environment == nil && !$0.inLibrary }
         report.orphanEnvironments = environments.filter { $0.project == nil }
         report.orphanServiceProjects = serviceProjects.filter { $0.account == nil }
         report.accountsWithCategoryWords = accounts.filter { account in

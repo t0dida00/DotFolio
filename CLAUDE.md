@@ -34,7 +34,7 @@ Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project sec
 - Tables: native `Table` with `.bordered(alternatesRowBackgrounds: true)`, height `DS.Table.height(rows:)` (no vertical scroll, sideways only), content-fit widths via `TextWidth.fit`.
 - Links in tables/grids: `LinkText` (one line, left-aligned), never a bare `Link` with long text.
 - Every clickable control gets `.clickableCursor()` (on the control or its container). Action buttons use `.buttonBorderShape(.capsule)`.
-- Terms: **Service** = what it's for (Database, Cache…), **Provider** = who provides it (Supabase, Redis…), **Account** = a login (several providers), **Link** = console URL.
+- Terms: **Service** = what it's for (Database, Cache…), **Provider** = who provides it (Supabase, Redis…), **Account** = a login (several providers), **Link** = console URL, **Library key** = a `Variable` with `inLibrary == true` and no environment (reusable, not in any project; names unique per provider).
 - Destructive actions: `confirmationDialog` titled "Delete X?", message ends with "This can’t be undone."; Keychain items removed before metadata.
 - Unfinished features are hidden behind `FeatureFlags`, not shown as "coming soon".
 - Data integrity: `IntegrityCheck` (menu **DotFolio → Verify Data…**) must stay clean after any change that writes variables or Keychain items; add a case to its tests when introducing a new invariant.

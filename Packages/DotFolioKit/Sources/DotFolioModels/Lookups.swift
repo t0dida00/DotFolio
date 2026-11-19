@@ -13,6 +13,37 @@ public enum DotFolioSchema {
     }
 }
 
+// MARK: - Library
+
+public enum Library {
+    /// Every library key, sorted by provider then name.
+    @MainActor
+    public static func keys(context: ModelContext) -> [Variable] {
+        let all = (try? context.fetch(FetchDescriptor<Variable>(predicate: #Predicate { $0.inLibrary }))) ?? []
+        return all.sorted {
+            $0.serviceLabel.lowercased() == $1.serviceLabel.lowercased()
+                ? $0.key.localizedStandardCompare($1.key) == .orderedAscending
+                : $0.serviceLabel.localizedStandardCompare($1.serviceLabel) == .orderedAscending
+        }
+    }
+
+    /// Library keys of one provider (case-insensitive; "" = no provider).
+    @MainActor
+    public static func keys(provider: String, context: ModelContext) -> [Variable] {
+        keys(context: context).filter { $0.serviceLabel.caseInsensitiveCompare(provider) == .orderedSame }
+    }
+
+    /// Search over metadata only (never values): key, provider, service, account, notes.
+    public static func filter(_ keys: [Variable], query: String) -> [Variable] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return keys }
+        return keys.filter { v in
+            [v.key, v.serviceLabel, v.displayCategory, v.account?.login ?? "", v.notes]
+                .contains { !$0.isEmpty && $0.localizedStandardContains(q) }
+        }
+    }
+}
+
 // MARK: - Variable linking
 
 extension Variable {

@@ -35,7 +35,7 @@ struct ProjectPreview: View {
 
             // Pinned to the bottom, like New Project in the list column.
             if let environment {
-                AddVariableCard(environment: environment, nameFocused: $addNameFocused)
+                AddVariableCard(target: .environment(environment), nameFocused: $addNameFocused)
                     .id(environment.id)
                     .padding(.horizontal, DS.Space.xl)
                     .padding(.vertical, DS.Space.m)
