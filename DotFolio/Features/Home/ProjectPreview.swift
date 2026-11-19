@@ -1,3 +1,4 @@
+import DotFolioCore
 import DotFolioModels
 import SwiftUI
 
@@ -9,6 +10,7 @@ struct ProjectPreview: View {
 
     @State private var environmentID: ProjectEnvironment.ID?
     @FocusState private var addNameFocused: Bool
+    @State private var isEditing = false
 
     private var environments: [ProjectEnvironment] { project.sortedEnvironments }
     private var environment: ProjectEnvironment? {
@@ -45,7 +47,16 @@ struct ProjectPreview: View {
 
     // MARK: Top: project information
 
+    @ViewBuilder
     private var header: some View {
+        if isEditing {
+            ProjectInfoEditor(project: project, onDone: { isEditing = false })
+        } else {
+            readOnlyHeader
+        }
+    }
+
+    private var readOnlyHeader: some View {
         HStack(alignment: .top, spacing: 14) {
             ProjectTile(provider: project.provider, size: 52)
             VStack(alignment: .leading, spacing: 3) {
@@ -60,6 +71,15 @@ struct ProjectPreview: View {
                 }
             }
             Spacer(minLength: 12)
+            Button { isEditing = true } label: {
+                Image(systemName: "pencil")
+            }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .buttonBorderShape(.capsule)
+                .help("Edit project details")
+                .accessibilityLabel("Edit project details")
+                .clickableCursor()
             Button(role: .destructive, action: onDelete) {
                 Image(systemName: "trash")
                     .foregroundStyle(.red)
@@ -85,6 +105,16 @@ struct ProjectPreview: View {
                         LinkText(url: url, title: project.repoFullName.isEmpty ? (url.host() ?? url.absoluteString) : project.repoFullName)
                             .fixedSize()
                     }
+                }
+            }
+            if let folder = ProjectFolder.resolve(project) {
+                GridRow {
+                    label("Local folder")
+                    Text(folder.path(percentEncoded: false))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                        .help(folder.path(percentEncoded: false))
                 }
             }
             GridRow {

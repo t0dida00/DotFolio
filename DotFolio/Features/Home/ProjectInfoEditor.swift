@@ -1,0 +1,123 @@
+import DotFolioCore
+import DotFolioModels
+import SwiftUI
+
+/// Inline editor for a project's name, description, link and local folder.
+struct ProjectInfoEditor: View {
+    let project: Project
+    let onDone: () -> Void
+
+    @State private var name: String
+    @State private var summary: String
+    @State private var link: String
+    @State private var error: String?
+    @State private var folderPath: String?
+    @FocusState private var nameFocused: Bool
+
+    init(project: Project, onDone: @escaping () -> Void) {
+        self.project = project
+        self.onDone = onDone
+        _name = State(initialValue: project.name)
+        _summary = State(initialValue: project.summary)
+        _link = State(initialValue: project.repoURL?.absoluteString ?? "")
+    }
+
+    private var linkHint: String {
+        let text = link.trimmingCharacters(in: .whitespaces)
+        if text.isEmpty { return "A GitHub or GitLab link is recognized as the project’s repo." }
+        guard let url = InputValidation.webURL(text) else { return "Enter a web link, e.g. https://github.com/owner/repo" }
+        if let repo = RepoLink(url: url) { return "Recognized \(repo.provider.displayName) repo \(repo.fullName)" }
+        return "Saved as a plain link (not a repo)."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
+                ProjectTile(provider: project.provider, size: 52)
+                Text("Edit Project").font(.title2.weight(.semibold))
+            }
+
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 10, verticalSpacing: 8) {
+                GridRow {
+                    label("Project name")
+                    TextField("", text: $name, prompt: Text("My App"))
+                        .focused($nameFocused)
+                }
+                GridRow {
+                    label("Description")
+                    TextField("", text: $summary, prompt: Text("What this project is (optional)"), axis: .vertical)
+                        .lineLimit(1...3)
+                }
+                GridRow {
+                    label("Project link")
+                    VStack(alignment: .leading, spacing: 2) {
+                        TextField("", text: $link, prompt: Text(verbatim: "https://github.com/owner/repo (optional)"))
+                        Text(linkHint).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                GridRow {
+                    label("Local folder")
+                    HStack(spacing: 8) {
+                        Text(folderPath ?? "Not set")
+                            .foregroundStyle(folderPath == nil ? .secondary : .primary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(folderPath ?? "Where Export saves .env files")
+                        Spacer(minLength: 8)
+                        Button(folderPath == nil ? "Choose…" : "Change…") {
+                            if ProjectFolder.choose(for: project) != nil { refreshFolder() }
+                        }
+                        if folderPath != nil {
+                            Button("Remove") {
+                                project.localFolderBookmark = nil
+                                refreshFolder()
+                            }
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .clickableCursor()
+                }
+            }
+            .textFieldStyle(.roundedBorder)
+
+            HStack {
+                if let error { Text(error).font(.callout).foregroundStyle(.red) }
+                Spacer()
+                Button("Cancel", action: onDone)
+                    .buttonStyle(.bordered)
+                    .keyboardShortcut(.cancelAction)
+                Button("Save", action: save)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .controlSize(.large)
+            .buttonBorderShape(.capsule)
+            .clickableCursor()
+        }
+        .padding(14)
+        .panel(radius: DS.Radius.medium, bordered: true)
+        .onAppear {
+            nameFocused = true
+            refreshFolder()
+        }
+    }
+
+    private func label(_ text: String) -> some View {
+        Text(text).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
+    }
+
+    private func refreshFolder() {
+        folderPath = ProjectFolder.resolve(project)?.path(percentEncoded: false)
+    }
+
+    private func save() {
+        do {
+            try ProjectEditor.update(project, name: name, summary: summary, link: link)
+            onDone()
+        } catch {
+            self.error = error.message
+        }
+    }
+}
