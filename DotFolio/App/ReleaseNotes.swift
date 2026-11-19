@@ -14,6 +14,8 @@ enum ReleaseNotes {
              "Right-click a library key to add it to any project environment, with or without its value (Touch ID)."),
             ("checkmark.shield", "Safe by default",
              "Names are unique per provider, Verify Data understands library keys, and Erase All Data removes them too."),
+            ("gauge.with.dots.needle.67percent", "Smoother tables",
+             "Variable tables and project details redraw much faster while you hover, type and reveal values. Copying a value now shows a checkmark."),
         ]),
         Entry(version: "0.1.0", highlights: [
             ("key.horizontal", "Secrets in your Keychain",
