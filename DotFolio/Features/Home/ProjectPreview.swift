@@ -12,21 +12,19 @@ struct ProjectPreview: View {
     @FocusState private var addNameFocused: Bool
     @State private var isEditing = false
 
-    private var environments: [ProjectEnvironment] { project.sortedEnvironments }
-    private var environment: ProjectEnvironment? {
-        environments.first { $0.id == environmentID } ?? environments.first
-    }
-
     var body: some View {
+        // Sorted once per redraw and handed down (each read used to re-sort).
+        let environments = project.sortedEnvironments
+        let environment = environments.first { $0.id == environmentID } ?? environments.first
         // The whole detail column scrolls; the .env table inside grows to fit
         // every row instead of scrolling on its own.
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.Space.l) {
                     header
-                    infoGrid
+                    infoGrid(environmentCount: environments.count)
                     Divider()
-                    envSection
+                    envSection(environments: environments, environment: environment)
                 }
                 .padding(DS.Space.xl)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -95,7 +93,10 @@ struct ProjectPreview: View {
         }
     }
 
-    private var infoGrid: some View {
+    @ViewBuilder
+    private func infoGrid(environmentCount: Int) -> some View {
+        let all = project.allVariables
+        let missing = all.reduce(0) { $0 + ($1.hasValue ? 0 : 1) }
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.m, verticalSpacing: DS.Space.s) {
             if let url = project.repoURL {
                 GridRow {
@@ -119,8 +120,8 @@ struct ProjectPreview: View {
             }
             GridRow {
                 label("Variables")
-                Text(variablesSummary)
-                    .foregroundStyle(missingCount > 0 ? AnyShapeStyle(DS.Status.warning) : AnyShapeStyle(.primary))
+                Text(Self.variablesSummary(total: all.count, missing: missing, environments: environmentCount))
+                    .foregroundStyle(missing > 0 ? AnyShapeStyle(DS.Status.warning) : AnyShapeStyle(.primary))
             }
             GridRow {
                 label("Created")
@@ -133,19 +134,15 @@ struct ProjectPreview: View {
         Text(text).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
     }
 
-    private var allVariables: [Variable] { project.allVariables }
-    private var missingCount: Int { allVariables.filter { !$0.hasValue }.count }
-
-    private var variablesSummary: String {
-        let total = allVariables.count
+    private static func variablesSummary(total: Int, missing: Int, environments: Int) -> String {
         guard total > 0 else { return "None yet" }
-        let base = "\(total) across \(environments.count) environments"
-        return missingCount == 0 ? base : "\(base) · \(missingCount) missing \(missingCount == 1 ? "value" : "values")"
+        let base = "\(total) across \(environments) environments"
+        return missing == 0 ? base : "\(base) · \(missing) missing \(missing == 1 ? "value" : "values")"
     }
 
     // MARK: Bottom: .env table
 
-    private var envSection: some View {
+    private func envSection(environments: [ProjectEnvironment], environment: ProjectEnvironment?) -> some View {
         VStack(alignment: .leading, spacing: DS.Space.s) {
             HStack {
                 if let environment {

@@ -30,11 +30,17 @@ struct VariableTable: View {
 
     /// Plaintext of revealed values, in memory only, hidden again on lock.
     @State private var revealed: [Variable.ID: String] = [:]
+    /// Row whose value was just copied: its copy icon shows a tick briefly.
+    @State private var copiedID: Variable.ID?
 
     var body: some View {
+        // Computed once per redraw and shared by every column and row (reading a
+        // computed property per column re-measured all the text six times).
+        let widths = columnWidths
+        let rowNumber = Dictionary(uniqueKeysWithValues: variables.enumerated().map { ($1.id, $0 + 1) })
         Table(variables, selection: $selection) {
             TableColumn("#") { v in
-                Text("\((variables.firstIndex { $0.id == v.id } ?? 0) + 1)")
+                Text("\(rowNumber[v.id] ?? 0)")
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -153,9 +159,9 @@ struct VariableTable: View {
 
     // MARK: Column widths
 
-    private var widths: (name: CGFloat, value: CGFloat, category: CGFloat, service: CGFloat, account: CGFloat, link: CGFloat) {
+    private var columnWidths: (name: CGFloat, value: CGFloat, category: CGFloat, service: CGFloat, account: CGFloat, link: CGFloat) {
         let vars = variables
-        let revealedWidest = revealed.values.map { TextWidth.of($0, monospaced: true) }.max() ?? 0
+        let revealedWidest = revealed.values.map { TextWidth.of($0, monospaced: true, cached: false) }.max() ?? 0
         return (
             name: TextWidth.fit(vars.map(\.key) + ["Name"], monospaced: true, extra: 20, min: 80, max: 280),
             // Dots (or a revealed value) + the eye and copy buttons.
@@ -198,7 +204,11 @@ struct VariableTable: View {
             .help(revealed[v.id] != nil ? "Hide value" : "Reveal value (Touch ID)")
             .clickableCursor()
 
-            Button { copy(v) } label: { Image(systemName: "doc.on.doc") }
+            Button { copy(v) } label: {
+                Image(systemName: copiedID == v.id ? "checkmark" : "doc.on.doc")
+                    .foregroundStyle(copiedID == v.id ? AnyShapeStyle(DS.Status.success) : AnyShapeStyle(.primary))
+                    .contentTransition(.symbolEffect(.replace))
+            }
                 .buttonStyle(.borderless)
                 .symbolMotion(.bounce)
                 .disabled(!v.hasValue)
@@ -256,6 +266,11 @@ struct VariableTable: View {
         withValue(of: v, reason: "copy \(v.key)") { plain in
             SecureClipboard.copy(plain)
             errorMessage = nil
+            copiedID = v.id
+            Task {
+                try? await Task.sleep(for: .seconds(1.5))
+                if copiedID == v.id { copiedID = nil }
+            }
         }
     }
 

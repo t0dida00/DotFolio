@@ -26,6 +26,9 @@ struct EnvEditor: View {
     private var variables: [Variable] { environment.sortedVariables }
 
     var body: some View {
+        // Sorted once per redraw and handed down (each read used to re-sort).
+        let variables = self.variables
+        let others = otherEnvironments
         VStack(alignment: .leading, spacing: DS.Space.s) {
             VariableTable(
                 variables: variables,
@@ -34,13 +37,13 @@ struct EnvEditor: View {
                 errorMessage: $errorMessage,
                 emptyText: "No variables in \(environment.name) yet — add one below."
             )
-            footer
+            footer(variables: variables, others: others)
         }
     }
 
     // MARK: Add row
 
-    private var footer: some View {
+    private func footer(variables: [Variable], others: [ProjectEnvironment]) -> some View {
         HStack(spacing: 0) {
             Button(action: onAdd) { Image(systemName: "plus").frame(width: 24, height: 20) }
                 .symbolMotion(.bounce)
@@ -53,7 +56,7 @@ struct EnvEditor: View {
                 .disabled(selection.isEmpty)
                 .help("Delete selected")
                 .accessibilityLabel("Delete selected variables")
-            copyMenu
+            copyMenu(variables: variables, others: others)
                 .padding(.leading, DS.Space.s)
             Spacer()
             Text(errorMessage ?? copyNotice ?? "Values live in your Keychain · reveal and copy ask for Touch ID")
@@ -77,11 +80,12 @@ struct EnvEditor: View {
         return picked.isEmpty ? variables : picked
     }
 
-    private var copyMenu: some View {
+    private func copyMenu(variables: [Variable], others: [ProjectEnvironment]) -> some View {
         Menu {
-            let count = rowsToCopy.count
+            let picked = variables.filter { selection.contains($0.id) }.count
+            let count = picked == 0 ? variables.count : picked
             Text(selection.isEmpty ? "Copy all \(count) variables to…" : "Copy \(count) selected to…")
-            ForEach(otherEnvironments) { target in
+            ForEach(others) { target in
                 Menu(target.name) {
                     Button("Names Only") { copy(to: target, includeValues: false) }
                     Button("Names and Values (Touch ID)") { copy(to: target, includeValues: true) }
@@ -93,7 +97,7 @@ struct EnvEditor: View {
         .menuStyle(.button)
         .symbolMotion(.bounce)
         .fixedSize()
-        .disabled(variables.isEmpty || otherEnvironments.isEmpty)
+        .disabled(variables.isEmpty || others.isEmpty)
         .help("Copy these variables to another environment. Existing names there are skipped, never overwritten.")
     }
 

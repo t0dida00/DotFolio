@@ -172,7 +172,7 @@ struct NewProjectForm: View {
                         .opacity(row.value.isEmpty ? 0 : 1)
                     }
                 }
-                .width(min(320, max(140, (draft.rows.filter(\.isRevealed).map { TextWidth.of($0.value, monospaced: true) }.max() ?? 0) + 50)))
+                .width(min(320, max(140, (draft.rows.filter(\.isRevealed).map { TextWidth.of($0.value, monospaced: true, cached: false) }.max() ?? 0) + 50)))
 
                 TableColumn("Service") { row in
                     TextField("", text: binding(row.id, \.category), prompt: Text("e.g. Database"))

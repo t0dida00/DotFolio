@@ -46,6 +46,8 @@ struct ProjectBrowser: View {
     private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
+        // Library groups are built once per redraw, and only in that mode.
+        let library = mode == .libraries ? libraryGroups() : (all: [], shown: [])
         VStack(spacing: 0) {
             toolbar
             Divider()
@@ -75,7 +77,7 @@ struct ProjectBrowser: View {
                                 .frame(maxHeight: .infinity)
                             accountsFooter
                         case .libraries:
-                            LibraryProviderList(groups: LibraryGroup.make(from: libraryKeys), total: libraryKeys.count,
+                            LibraryProviderList(groups: library.all, total: libraryKeys.count,
                                                 selection: $libraryProvider)
                                 .frame(maxHeight: .infinity)
                             libraryFooter
@@ -95,7 +97,7 @@ struct ProjectBrowser: View {
                             accountDetail
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         case .libraries:
-                            LibraryView(groups: libraryGroupsShown, total: libraryKeys.count, focusRequest: libraryFocusRequest)
+                            LibraryView(groups: library.shown, total: libraryKeys.count, focusRequest: libraryFocusRequest)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
@@ -321,10 +323,11 @@ struct ProjectBrowser: View {
 
     /// Groups for the right column: search filters keys (metadata only), and
     /// a provider picked on the left narrows to that group.
-    private var libraryGroupsShown: [LibraryGroup] {
-        let groups = LibraryGroup.make(from: Library.filter(libraryKeys, query: query))
-        guard let libraryProvider else { return groups }
-        return groups.filter { $0.id == libraryProvider }
+    private func libraryGroups() -> (all: [LibraryGroup], shown: [LibraryGroup]) {
+        let all = LibraryGroup.make(from: libraryKeys)
+        let searched = isSearching ? LibraryGroup.make(from: Library.filter(libraryKeys, query: query)) : all
+        guard let libraryProvider else { return (all, searched) }
+        return (all, searched.filter { $0.id == libraryProvider })
     }
 
     private var libraryFooter: some View {
@@ -418,7 +421,7 @@ struct ProjectBrowser: View {
             .scrollContentBackground(.hidden)
             // Right-click menu. A click opens the project as a tab.
             .contextMenu(forSelectionType: PersistentIdentifier.self) { ids in
-                let picked = projects(for: ids)
+                let picked = projects(for: ids, in: rows)
                 if picked.count == 1, let project = picked.first {
                     Button("Delete Project…", role: .destructive) { projectsPendingDeletion = [project] }
                 } else if picked.count > 1 {
@@ -512,8 +515,8 @@ struct ProjectBrowser: View {
     // MARK: Actions
 
     /// In list order, so the dialog and tabs follow what the user sees.
-    private func projects(for ids: Set<PersistentIdentifier>) -> [Project] {
-        results.map(\.project).filter { ids.contains($0.persistentModelID) }
+    private func projects(for ids: Set<PersistentIdentifier>, in rows: [(project: Project, match: ProjectSearch.Match)]? = nil) -> [Project] {
+        (rows ?? results).map(\.project).filter { ids.contains($0.persistentModelID) }
     }
 
     private func openInTabs(_ picked: [Project]) {
