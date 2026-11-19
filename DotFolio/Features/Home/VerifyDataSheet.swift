@@ -17,19 +17,19 @@ struct VerifyDataSheet: View {
     @State private var repairedCount: Int?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: DS.Space.l) {
+            HStack(spacing: DS.Space.m) {
                 Image(systemName: icon)
                     .font(.system(size: 28))
                     .foregroundStyle(tint)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Verify Data").font(.title3.weight(.semibold))
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                    Text("Verify Data").font(DS.Font.sheetTitle)
                     Text(summary).foregroundStyle(.secondary)
                 }
             }
 
             if let report, !report.isClean {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: DS.Space.s) {
                     issue(report.missingSecrets.count, "Values missing from the Keychain",
                           "Marked as set, but the Keychain item is gone. Repair marks them Not set so you can re-enter them.")
                     issue(report.orphanedSecretRefs.count, "Leftover Keychain items",
@@ -48,7 +48,7 @@ struct VerifyDataSheet: View {
             }
 
             if let error {
-                Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(DS.Status.danger)
             }
 
             HStack {
@@ -68,7 +68,7 @@ struct VerifyDataSheet: View {
             .buttonBorderShape(.capsule)
             .clickableCursor()
         }
-        .padding(24)
+        .padding(DS.Space.xxl)
         .frame(width: 520)
         .onAppear(perform: check)
     }
@@ -80,7 +80,7 @@ struct VerifyDataSheet: View {
 
     private var tint: Color {
         guard let report else { return .secondary }
-        return report.isClean ? .green : .orange
+        return report.isClean ? DS.Status.success : DS.Status.warning
     }
 
     private var summary: String {
@@ -93,21 +93,21 @@ struct VerifyDataSheet: View {
     @ViewBuilder
     private func issue(_ count: Int, _ title: String, _ detail: String, fixable: Bool = true) -> some View {
         if count > 0 {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: DS.Space.s) {
                 Text("\(count)")
                     .font(.headline.monospacedDigit())
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(DS.Status.warning)
                     .frame(minWidth: 24, alignment: .trailing)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
                     Text(title).fontWeight(.medium)
                     Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 if !fixable {
-                    Text("Manual").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                    Text("Manual").font(DS.Font.label).foregroundStyle(.secondary)
                 }
             }
-            .padding(10)
+            .padding(DS.Space.s)
             .panel(radius: DS.Radius.medium)
         }
     }

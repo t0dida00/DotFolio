@@ -27,6 +27,9 @@ Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project sec
 ## Consistency (use `DotFolio/Shared/DesignSystem.swift`)
 
 - Corner radius: only `DS.Radius.small / .medium / .large` — no literal numbers.
+- Spacing/padding: `DS.Space` (4pt grid: 2·4·8·12·16·20·24·32); only window-chrome/hero insets ≥ 40 may be literal.
+- Type: `DS.Font.pageTitle` (screen/full-window step), `.sheetTitle`, `.sectionTitle`, `.panelTitle`, `.label` (column headers). Body text uses `.callout`/`.caption` for secondary lines.
+- Color: accent is the brand violet (asset `AccentColor`). Icon tiles: `TintedIcon` with a `DS.Palette` hue (soft tint background, same-hue icon) — no gray tiles. Environments: `DS.Env` (development aqua, staging amber, production red) with `EnvLabel`. States: `DS.Status` (danger/warning/success), always with an icon or text. Fills: `DS.Fill`. Hues come from the validated palette — run the dataviz validator before adding new ones.
 - Page sections: `Card`. Light inset blocks: `.panel()`. Chips: `.chip()`.
 - Tables: native `Table` with `.bordered(alternatesRowBackgrounds: true)`, height `DS.Table.height(rows:)` (no vertical scroll, sideways only), content-fit widths via `TextWidth.fit`.
 - Links in tables/grids: `LinkText` (one line, left-aligned), never a bare `Link` with long text.

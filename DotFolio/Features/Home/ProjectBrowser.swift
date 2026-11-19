@@ -11,6 +11,7 @@ import SwiftUI
 struct ProjectBrowser: View {
     @Environment(\.modelContext) private var context
     @Environment(\.secretStore) private var secrets
+    @Environment(UpdateCenter.self) private var updates
     @Query private var projects: [Project]
     @Query private var accounts: [Account]
 
@@ -49,14 +50,14 @@ struct ProjectBrowser: View {
                     VStack(spacing: 0) {
                         brandHeader
                         Divider()
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, DS.Space.m)
                         Picker("Show", selection: $mode) {
                             ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
+                        .padding(.horizontal, DS.Space.m)
+                        .padding(.vertical, DS.Space.s)
                         .clickableCursor()
 
                         switch mode {
@@ -140,14 +141,14 @@ struct ProjectBrowser: View {
     // MARK: Toolbar
 
     private var toolbar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DS.Space.s) {
             Menu {
                 Picker("Sort By", selection: $sort) {
                     ForEach(ProjectSort.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.inline)
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: DS.Space.xs) {
                     Image(systemName: "line.3.horizontal.decrease")
                     Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
                 }
@@ -170,8 +171,8 @@ struct ProjectBrowser: View {
                 .frame(maxWidth: 300)
         }
         .padding(.leading, HomeView.trafficLightInset)
-        .padding(.trailing, 16)
-        .padding(.vertical, 8)
+        .padding(.trailing, DS.Space.l)
+        .padding(.vertical, DS.Space.s)
         .background {
             // ⌘F focuses search, like most Mac apps.
             Button("") { searchFocused = true }
@@ -185,7 +186,7 @@ struct ProjectBrowser: View {
     private var isSignedIn: Bool { !gitHubUser.isEmpty || !gitLabUser.isEmpty }
 
     private var listFooter: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: DS.Space.s) {
             Button { showNewProject = true } label: {
                 Label("New Project", systemImage: "plus")
                     .frame(maxWidth: .infinity)
@@ -200,7 +201,7 @@ struct ProjectBrowser: View {
 
             if !gitHubUser.isEmpty {
                 Divider()
-                HStack(spacing: 8) {
+                HStack(spacing: DS.Space.s) {
                     BrandMark.github.image.resizable().scaledToFit().frame(width: 14, height: 14)
                         .foregroundStyle(.secondary)
                     Text("@\(gitHubUser)").lineLimit(1).truncationMode(.middle)
@@ -233,14 +234,14 @@ struct ProjectBrowser: View {
             // Shown until a GitHub (or, once supported, GitLab) account is linked.
             if !isSignedIn {
                 Divider()
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: DS.Space.s) {
                     Text(FeatureFlags.gitLab
                          ? "Sign in to GitHub or GitLab to import your repos and their .env.example."
                          : "Sign in to GitHub to import your repos and their .env.example.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    VStack(spacing: 8) {
+                    VStack(spacing: DS.Space.s) {
                         Button(action: flow.connectGitHub) {
                             Label { Text("GitHub") } icon: { BrandMark.github.image.resizable().scaledToFit().frame(width: 13, height: 13) }
                                 .frame(maxWidth: .infinity)
@@ -264,7 +265,7 @@ struct ProjectBrowser: View {
                 }
             }
         }
-        .padding(12)
+        .padding(DS.Space.m)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
     }
@@ -273,9 +274,9 @@ struct ProjectBrowser: View {
 
     /// Logo, name and slogan, stacked and centered at the top of the left column.
     private var brandHeader: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: DS.Space.s) {
             AppMark(size: 64)
-                .padding(.bottom, 4)
+                .padding(.bottom, DS.Space.xs)
             Text("DotFolio")
                 .font(.title3.weight(.semibold))
             Text("Every .env, safe in your Keychain.")
@@ -283,25 +284,26 @@ struct ProjectBrowser: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(Self.appVersion)
+            Text(UpdateCenter.versionLabel)
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.tertiary)
                 .textSelection(.enabled)
+            VStack(spacing: DS.Space.xxs) {
+                Button("Check for Updates…", action: updates.checkForUpdates)
+                Button("What’s New in \(UpdateCenter.currentVersion)") { updates.isShowingWhatsNew = true }
+            }
+            .buttonStyle(.link)
+            .font(.callout)
+            .clickableCursor()
+            .padding(.top, DS.Space.xxs)
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 14)
-        .padding(.top, 20)
-        .padding(.bottom, 14)
+        .padding(.horizontal, DS.Space.m)
+        .padding(.top, DS.Space.xl)
+        .padding(.bottom, DS.Space.m)
         .accessibilityElement(children: .combine)
     }
 
-    /// "Version 0.1.0 (1)", from MARKETING_VERSION and CURRENT_PROJECT_VERSION.
-    private static let appVersion: String = {
-        let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
-        let build = info?["CFBundleVersion"] as? String
-        return build.map { "Version \(version) (\($0))" } ?? "Version \(version)"
-    }()
 
     // MARK: Accounts mode
 
@@ -316,7 +318,7 @@ struct ProjectBrowser: View {
         .controlSize(.large)
         .buttonBorderShape(.capsule)
         .clickableCursor()
-        .padding(12)
+        .padding(DS.Space.m)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
     }
@@ -429,17 +431,17 @@ struct ProjectBrowser: View {
                     }
                 }
             }
-            .padding(2)
-            .background(.quaternary.opacity(0.8), in: .capsule)
+            .padding(DS.Space.xxs)
+            .background(.quaternary.opacity(DS.Fill.tile), in: .capsule)
 
             if tabs.count == 1 {
                 // Takes the other half, so a lone tab is at most 50% wide.
                 Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 10)
-        .padding(.bottom, 2)
+        .padding(.horizontal, DS.Space.xl)
+        .padding(.top, DS.Space.s)
+        .padding(.bottom, DS.Space.xxs)
         .background {
             // ⌘W closes the active tab.
             Button("") { if let selection { closeTab(selection) } }
@@ -565,7 +567,7 @@ private struct ProjectTab: View {
             .lineLimit(1)
             .truncationMode(.middle)
             .foregroundStyle(isActive ? .primary : .secondary)
-            .padding(.horizontal, 28)
+            .padding(.horizontal, DS.Space.xxl)
             .frame(maxWidth: .infinity, minHeight: 26)
             .overlay(alignment: .leading) {
                 // X sits on the left; always on the active tab, on hover otherwise.
@@ -578,7 +580,7 @@ private struct ProjectTab: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
-                    .padding(.leading, 8)
+                    .padding(.leading, DS.Space.s)
                     .help("Close Tab (⌘W)")
                     .symbolMotion(.bounce)
                     .accessibilityLabel("Close \(title)")
@@ -591,7 +593,7 @@ private struct ProjectTab: View {
                         .fill(.background)
                         .shadow(color: .black.opacity(0.12), radius: 1.5, y: 0.5)
                 } else if isHovering {
-                    Capsule().fill(.quaternary.opacity(0.6))
+                    Capsule().fill(.quaternary.opacity(DS.Fill.control))
                 }
             }
             .contentShape(.capsule)
@@ -608,9 +610,9 @@ private struct ProjectListRow: View {
     let match: ProjectSearch.Match
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DS.Space.s) {
             ProjectTile(provider: project.provider, size: 28)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: DS.Space.xxs) {
                 Text(project.name).lineLimit(1)
                 Text(subtitle)
                     .font(.callout)
@@ -619,7 +621,7 @@ private struct ProjectListRow: View {
                     .truncationMode(.middle)
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, DS.Space.xs)
         .clickableCursor()
     }
 
@@ -639,16 +641,21 @@ struct ProjectTile: View {
     var size: CGFloat = 40
 
     var body: some View {
-        Group {
+        TintedIcon(tint: tint, size: size) {
             switch provider {
             case .github: BrandMark.github.image.resizable().scaledToFit().frame(width: size * 0.5, height: size * 0.5)
             case .gitlab: BrandMark.gitlab.image.resizable().scaledToFit().frame(width: size * 0.5, height: size * 0.5)
-            case .none: Image(systemName: "folder").font(.system(size: size * 0.42))
+            case .none: Image(systemName: "folder").font(.system(size: size * 0.42, weight: .medium))
             }
         }
-        .foregroundStyle(.secondary)
-        .frame(width: size, height: size)
-        .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+    }
+
+    private var tint: Color {
+        switch provider {
+        case .github: DS.Palette.violet
+        case .gitlab: DS.Palette.orange
+        case .none: DS.Palette.blue
+        }
     }
 }
 
@@ -657,7 +664,7 @@ private struct SearchField: View {
     var isFocused: FocusState<Bool>.Binding
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: DS.Space.s) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
             TextField("Search projects, keys, providers, accounts", text: $text)
                 .textFieldStyle(.plain)
@@ -674,7 +681,7 @@ private struct SearchField: View {
                 .accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, DS.Space.m)
         .frame(height: 36)
         .glassEffect(.regular, in: .capsule)
     }

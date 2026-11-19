@@ -30,10 +30,10 @@ private struct WaitingStep: View {
     @State private var copied = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: DS.Space.l) {
             StepHeader(title: "Enter this code on GitHub", subtitle: "The code is copied. Your browser will open the confirmation page.")
 
-            HStack(spacing: 12) {
+            HStack(spacing: DS.Space.m) {
                 Text(code.userCode)
                     .font(.system(size: 30, weight: .semibold, design: .monospaced))
                     .tracking(3)
@@ -53,11 +53,11 @@ private struct WaitingStep: View {
                 .symbolMotion(.bounce)
                 .accessibilityLabel("Copy code")
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
-            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
+            .padding(.horizontal, DS.Space.l)
+            .padding(.vertical, DS.Space.m)
+            .background(.quaternary.opacity(DS.Fill.control), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
 
-            HStack(spacing: 6) {
+            HStack(spacing: DS.Space.s) {
                 ProgressView().controlSize(.small)
                 Text("Waiting for you to confirm… Code expires in ") + Text(timerInterval: Date.now...max(code.expiresAt, .now), countsDown: true)
             }
@@ -65,7 +65,7 @@ private struct WaitingStep: View {
             .foregroundStyle(.secondary)
             .monospacedDigit()
 
-            HStack(spacing: 10) {
+            HStack(spacing: DS.Space.s) {
                 Button(action: model.openVerificationPage) {
                     Label("Open \(code.verificationURL.host() ?? "")\(code.verificationURL.path())", systemImage: "arrow.up.forward.square")
                 }
@@ -88,21 +88,21 @@ private struct ConnectedStep: View {
     let account: ConnectionFlowModel.ConnectedAccount
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: DS.Space.xxl) {
             StepHeader(title: "Connected to \(account.provider.displayName)", subtitle: "Next, choose the repos to turn into projects.")
 
             ListSection(title: "Account") {
-                HStack(spacing: 12) {
+                HStack(spacing: DS.Space.m) {
                     AccountAvatar(name: account.username, url: account.avatarURL)
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
+                    VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                        HStack(spacing: DS.Space.s) {
                             Text(account.username).font(.body.weight(.medium)).lineLimit(1)
                             Label("Read-only", systemImage: "checkmark")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.green)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(.green.opacity(0.12), in: Capsule())
+                                .font(DS.Font.label)
+                                .foregroundStyle(DS.Status.success)
+                                .padding(.horizontal, DS.Space.s)
+                                .padding(.vertical, DS.Space.xxs)
+                                .background(DS.Status.success.opacity(0.12), in: Capsule())
                         }
                         Text(accountDetail)
                             .foregroundStyle(.secondary)
@@ -110,10 +110,10 @@ private struct ConnectedStep: View {
                             .truncationMode(.tail)
                     }
                 }
-                .padding(.vertical, 6)
+                .padding(.vertical, DS.Space.s)
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: DS.Space.s) {
                 Button("Choose Repos…", action: model.chooseRepos)
                     .buttonStyle(.borderedProminent)
                     .clickableCursor()
@@ -139,20 +139,20 @@ private struct FailedStep: View {
     let failure: ConnectionFlowModel.Failure
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: DS.Space.l) {
             StepHeader(title: failure == .notConfigured ? "GitHub sign-in needs setup" : "GitHub isn’t connected yet", subtitle: nil)
 
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
+            HStack(alignment: .firstTextBaseline, spacing: DS.Space.s) {
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(DS.Status.danger)
                     .symbolMotion(.wiggle, onAppear: true)
                 (Text(failure.title).fontWeight(.semibold) + Text(" ") + Text(failure.message))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(12)
+            .padding(DS.Space.m)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
+            .background(DS.Status.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
 
-            HStack(spacing: 10) {
+            HStack(spacing: DS.Space.s) {
                 Button(failure.retryTitle, action: model.retry)
                     .buttonStyle(.borderedProminent)
                     .clickableCursor()
@@ -175,10 +175,10 @@ private struct GitLabHostStep: View {
     private var showsError: Bool { !model.gitLabHost.isEmpty && !isValid }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: DS.Space.l) {
             StepHeader(title: "Self-hosted GitLab", subtitle: "Enter the address of your company’s or client’s GitLab.")
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
                 Text("GitLab address").font(.callout.weight(.medium))
                 TextField("https://gitlab.example.com", text: $model.gitLabHost)
                     .textFieldStyle(.roundedBorder)
@@ -188,10 +188,10 @@ private struct GitLabHostStep: View {
                     .onSubmit(model.connectSelfHostedGitLab)
                 Text(showsError ? "The address must start with https://" : "Only https is supported, so your sign-in code can’t be intercepted.")
                     .font(.caption)
-                    .foregroundStyle(showsError ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                    .foregroundStyle(showsError ? AnyShapeStyle(DS.Status.danger) : AnyShapeStyle(.secondary))
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: DS.Space.s) {
                 Button(action: model.connectSelfHostedGitLab) {
                     Label { Text("Continue") } icon: { BrandMark.gitlab.image }
                 }
@@ -219,12 +219,12 @@ struct ListSection<Header: View, Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
             header
-                .font(.callout.weight(.semibold))
+                .font(DS.Font.panelTitle)
                 .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 4) { content }
-                .padding(.leading, 12)
+            VStack(alignment: .leading, spacing: DS.Space.xs) { content }
+                .padding(.leading, DS.Space.m)
         }
     }
 }
@@ -245,18 +245,15 @@ struct ListRow: View {
     let subtitle: String
 
     var body: some View {
-        HStack(spacing: 12) {
-            Group {
+        HStack(spacing: DS.Space.m) {
+            TintedIcon(tint: DS.Palette.violet, size: 40) {
                 switch tile {
-                case .symbol(let name): Image(systemName: name).font(.system(size: 16, weight: .regular)).symbolMotion(.bounce)
+                case .symbol(let name): Image(systemName: name).font(.system(size: 16, weight: .medium)).symbolMotion(.bounce)
                 case .brand(let mark): mark.image.resizable().scaledToFit().frame(width: 18, height: 18)
                 }
             }
-            .foregroundStyle(.secondary)
-            .frame(width: 40, height: 40)
-            .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Space.xxs) {
                 title.font(.body).lineLimit(1)
                 Text(subtitle)
                     .foregroundStyle(.secondary)
@@ -264,7 +261,7 @@ struct ListRow: View {
                     .truncationMode(.tail)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, DS.Space.s)
         .accessibilityElement(children: .combine)
     }
 }
@@ -274,8 +271,8 @@ private struct StepHeader: View {
     let subtitle: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.title2.weight(.semibold))
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+            Text(title).font(DS.Font.pageTitle)
             if let subtitle {
                 Text(subtitle).foregroundStyle(.secondary)
             }
@@ -295,7 +292,7 @@ struct AccountAvatar: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.indigo)
+                .background(Color.accentColor)
         }
         .frame(width: 40, height: 40)
         .clipShape(Circle())
@@ -317,10 +314,10 @@ private struct ProgressStep: View {
     let onCancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: DS.Space.m) {
+            HStack(spacing: DS.Space.s) {
                 if progress == nil { ProgressView().controlSize(.small) }
-                Text(title).font(.title3.weight(.semibold))
+                Text(title).font(DS.Font.pageTitle)
             }
             if let progress { ProgressView(value: progress) }
             if let detail { Text(detail).foregroundStyle(.secondary) }
@@ -342,7 +339,7 @@ private struct RepoPickerStep: View {
     private var selectable: [GitHubRepo] { model.filteredRepos.filter { !model.isImported($0) } }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: DS.Space.m) {
             HStack(alignment: .firstTextBaseline) {
                 StepHeader(
                     title: "Import repositories",
@@ -360,14 +357,14 @@ private struct RepoPickerStep: View {
             if model.repos.isEmpty {
                 noRepos
             } else {
-                HStack(spacing: 8) {
-                    HStack(spacing: 6) {
+                HStack(spacing: DS.Space.s) {
+                    HStack(spacing: DS.Space.s) {
                         Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                         TextField("Filter repositories", text: $model.repoFilter).textFieldStyle(.plain)
                     }
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, DS.Space.s)
                     .frame(height: 30)
-                    .background(.quaternary.opacity(0.6), in: Capsule())
+                    .background(.quaternary.opacity(DS.Fill.control), in: Capsule())
 
                     Button(allSelected ? "Deselect All" : "Select All") {
                         if allSelected { model.selectedRepoIDs.subtract(selectable.map(\.id)) }
@@ -418,7 +415,7 @@ private struct RepoPickerStep: View {
     /// GitHub Apps only see repos where they're installed.
     @ViewBuilder
     private var installHint: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: DS.Space.s) {
             Image(systemName: "info.circle").foregroundStyle(.secondary)
             Text("Missing a repo? DotFolio only sees repos where its GitHub App is installed.")
                 .foregroundStyle(.secondary)
@@ -430,8 +427,8 @@ private struct RepoPickerStep: View {
     }
 
     private var noRepos: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("No repositories yet").font(.headline)
+        VStack(alignment: .leading, spacing: DS.Space.s) {
+            Text("No repositories yet").font(DS.Font.sectionTitle)
             Text("Install DotFolio’s GitHub App on your account or organization and choose which repos it can read, then refresh.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -441,9 +438,9 @@ private struct RepoPickerStep: View {
                     .symbolMotion(.bounceUp)
             }
         }
-        .padding(16)
+        .padding(DS.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
+        .background(.quaternary.opacity(DS.Fill.subtle), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
     }
 }
 
@@ -453,13 +450,13 @@ private struct RepoRow: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DS.Space.s) {
             Toggle("", isOn: $isOn)
                 .toggleStyle(.checkbox)
                 .labelsHidden()
                 .disabled(imported)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                HStack(spacing: DS.Space.s) {
                     Text(repo.fullName).fontWeight(.medium).lineLimit(1)
                     if repo.isPrivate {
                         Label("Private", systemImage: "lock.fill")
@@ -475,14 +472,14 @@ private struct RepoRow: View {
             }
             Spacer(minLength: 8)
             if imported {
-                Text("Added").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                Text("Added").font(DS.Font.label).foregroundStyle(.secondary)
             } else if let updated = repo.updatedAt {
                 Text(updated.formatted(.relative(presentation: .named)))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, DS.Space.xs)
         .contentShape(Rectangle())
         .onTapGesture { if !imported { isOn.toggle() } }
         .clickableCursor()

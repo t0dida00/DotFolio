@@ -8,6 +8,7 @@ struct DotFolioApp: App {
     private let container: ModelContainer
     @State private var navigation = AppNavigation()
     @State private var session = SessionLock()
+    @State private var updates = UpdateCenter()
     @State private var autoLock: SessionAutoLock?
 
     init() {
@@ -25,6 +26,7 @@ struct DotFolioApp: App {
             RootView()
                 .environment(navigation)
                 .environment(session)
+                .environment(updates)
                 .task {
                     // Lock on sleep / screen lock / screensaver.
                     if autoLock == nil { autoLock = SessionAutoLock(session: session) }
@@ -44,6 +46,8 @@ struct DotFolioApp: App {
             // After "About DotFolio": always present (the app has no Settings
             // scene yet, so an .appSettings anchor may not exist).
             CommandGroup(after: .appInfo) {
+                Button("Check for Updates…", action: updates.checkForUpdates)
+                Button("What’s New in DotFolio") { updates.isShowingWhatsNew = true }
                 Divider()
                 Button("Verify Data…") { navigation.isVerifyingData = true }
                 Button("Erase All Data…") { navigation.isConfirmingErase = true }

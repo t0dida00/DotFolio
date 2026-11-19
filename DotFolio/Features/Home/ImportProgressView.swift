@@ -10,19 +10,19 @@ struct ImportProgressView: View {
     private var fraction: Double { Double(done) / Double(max(total, 1)) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack(spacing: 18) {
+        VStack(alignment: .leading, spacing: DS.Space.xl) {
+            HStack(spacing: DS.Space.l) {
                 TransferGraphic()
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
                     Text("Importing from GitHub")
-                        .font(.title2.weight(.semibold))
+                        .font(DS.Font.pageTitle)
                     Text("Reading each repository’s .env.example to list the variables it needs. Values are never imported.")
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: DS.Space.s) {
                 ProgressView(value: fraction)
                     .progressViewStyle(.linear)
                     .tint(.accentColor)
@@ -66,15 +66,15 @@ struct ImportFinishedView: View {
     let summary: ConnectionFlowModel.ImportSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: DS.Space.xl) {
+            HStack(spacing: DS.Space.l) {
                 Image(systemName: summary.cancelled ? "pause.circle.fill" : "checkmark.seal.fill")
                     .font(.system(size: 46))
-                    .foregroundStyle(summary.cancelled ? AnyShapeStyle(.orange) : AnyShapeStyle(.green))
+                    .foregroundStyle(summary.cancelled ? AnyShapeStyle(DS.Status.warning) : AnyShapeStyle(DS.Status.success))
                     .symbolEffect(.bounce, value: summary.projects)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
                     Text(summary.cancelled ? "Import stopped" : "Import complete")
-                        .font(.title2.weight(.semibold))
+                        .font(DS.Font.pageTitle)
                     Text("\(summary.projects) \(summary.projects == 1 ? "project is" : "projects are") ready. Add values to the variables marked Not set.")
                         .foregroundStyle(.secondary)
                 }
@@ -107,16 +107,14 @@ struct ImportFinishedView: View {
 /// GitHub mark → animated dots → DotFolio mark.
 private struct TransferGraphic: View {
     var body: some View {
-        HStack(spacing: 10) {
-            BrandMark.github.image
-                .resizable().scaledToFit()
-                .frame(width: 26, height: 26)
-                .frame(width: 52, height: 52)
-                .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
+        HStack(spacing: DS.Space.s) {
+            TintedIcon(tint: DS.Palette.violet, size: 52) {
+                BrandMark.github.image.resizable().scaledToFit().frame(width: 26, height: 26)
+            }
 
             TimelineView(.animation(minimumInterval: 0.25)) { context in
                 let phase = Int(context.date.timeIntervalSinceReferenceDate * 4) % 4
-                HStack(spacing: 5) {
+                HStack(spacing: DS.Space.xs) {
                     ForEach(0..<3) { i in
                         Circle()
                             .fill(Color.accentColor)
@@ -136,9 +134,9 @@ private struct StatsRow: View {
     let stats: ConnectionFlowModel.ImportSummary
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DS.Space.m) {
             StatTile(value: stats.projects, label: "Projects", symbol: "folder.badge.plus", tint: .accentColor)
-            StatTile(value: stats.variables, label: "Variables found", symbol: "key.horizontal", tint: .green)
+            StatTile(value: stats.variables, label: "Variables found", symbol: "key.horizontal", tint: DS.Status.success)
             StatTile(value: stats.projects - stats.withEnvExample, label: "No .env.example", symbol: "doc.badge.ellipsis", tint: .secondary)
         }
     }
@@ -151,14 +149,13 @@ private struct StatTile: View {
     let tint: Color
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: symbol)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(tint)
-                // Bounces each time the count goes up during an import.
-                .symbolMotion(.bounce, value: value)
-                .frame(width: 34, height: 34)
-                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
+        HStack(spacing: DS.Space.m) {
+            TintedIcon(tint: tint, size: 34) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .medium))
+                    // Bounces each time the count goes up during an import.
+                    .symbolMotion(.bounce, value: value)
+            }
             VStack(alignment: .leading, spacing: 0) {
                 Text(value, format: .number)
                     .font(.title2.weight(.semibold).monospacedDigit())
@@ -168,7 +165,7 @@ private struct StatTile: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(12)
+        .padding(DS.Space.m)
         .frame(maxWidth: .infinity)
         .panel(radius: DS.Radius.medium, bordered: true)
         .accessibilityElement(children: .combine)
@@ -188,14 +185,14 @@ private struct ImportLog: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
                     Text("$ dotfolio import --from github")
                         .foregroundStyle(Self.dim)
                     ForEach(entries) { entry in
                         line(entry).id(entry.id)
                     }
                     ForEach(inFlight, id: \.self) { repo in
-                        HStack(spacing: 8) {
+                        HStack(spacing: DS.Space.s) {
                             Spinner().foregroundStyle(Color.accentColor)
                             Text("fetching \(repo)/.env.example").foregroundStyle(.white.opacity(0.8))
                         }
@@ -204,7 +201,7 @@ private struct ImportLog: View {
                 }
                 .font(.system(.callout, design: .monospaced))
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
+                .padding(DS.Space.m)
             }
             .onChange(of: entries.count) { _, _ in
                 withAnimation(.smooth) { proxy.scrollTo("bottom", anchor: .bottom) }
@@ -212,10 +209,10 @@ private struct ImportLog: View {
         }
         .background(Self.background, in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
         .overlay(alignment: .topTrailing) {
-            HStack(spacing: 6) {
+            HStack(spacing: DS.Space.s) {
                 ForEach([Color.red, .yellow, .green], id: \.self) { Circle().fill($0.opacity(0.7)).frame(width: 8, height: 8) }
             }
-            .padding(12)
+            .padding(DS.Space.m)
             .accessibilityHidden(true)
         }
         .environment(\.colorScheme, .dark)
@@ -223,7 +220,7 @@ private struct ImportLog: View {
 
     @ViewBuilder
     private func line(_ entry: ConnectionFlowModel.ImportLogEntry) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: DS.Space.s) {
             switch entry.outcome {
             case .keys(let count):
                 Text("✓").foregroundStyle(Self.green)

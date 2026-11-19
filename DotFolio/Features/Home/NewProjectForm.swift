@@ -19,15 +19,15 @@ struct NewProjectForm: View {
     @FocusState private var nameFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DS.Space.m) {
             header
             fields
             envTable
             footer
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 10)
-        .padding(.bottom, 16)
+        .padding(.horizontal, DS.Space.xxl)
+        .padding(.top, DS.Space.s)
+        .padding(.bottom, DS.Space.l)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear { nameFocused = true }
         .confirmationDialog("Discard this new project?", isPresented: $confirmDiscard) {
@@ -50,7 +50,7 @@ struct NewProjectForm: View {
     // MARK: Header
 
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DS.Space.s) {
             Button(action: cancel) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 14, weight: .semibold))
@@ -64,7 +64,7 @@ struct NewProjectForm: View {
             .help("Back to projects")
             .accessibilityLabel("Back to projects")
 
-            Text("New Project").font(.title3.weight(.semibold))
+            Text("New Project").font(DS.Font.pageTitle)
         }
         // The header sits in the title bar row; keep clear of the traffic lights.
         .padding(.leading, HomeView.trafficLightInset - 24)
@@ -73,7 +73,7 @@ struct NewProjectForm: View {
     // MARK: Fields
 
     private var fields: some View {
-        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 10, verticalSpacing: 6) {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.s, verticalSpacing: DS.Space.s) {
             GridRow {
                 fieldLabel("Project name")
                 TextField("", text: $draft.name, prompt: Text("My App"))
@@ -88,20 +88,20 @@ struct NewProjectForm: View {
             }
             GridRow {
                 fieldLabel("Project link", optional: true)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
                     // verbatim: a plain Text would render the URL as a blue link.
                     TextField("", text: $draft.link, prompt: Text(verbatim: "https://github.com/owner/repo"))
                         .textFieldStyle(.roundedBorder)
                     Text(linkHint)
                         .font(.caption)
-                        .foregroundStyle(draft.linkIsInvalid ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(draft.linkIsInvalid ? AnyShapeStyle(DS.Status.danger) : AnyShapeStyle(.secondary))
                 }
             }
         }
     }
 
     private func fieldLabel(_ title: String, optional: Bool = false) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: DS.Space.xs) {
             Text(title)
             if optional { Text("(optional)").foregroundStyle(.tertiary) }
         }
@@ -119,9 +119,9 @@ struct NewProjectForm: View {
     // MARK: .env table
 
     private var envTable: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
             HStack {
-                Text("Environment variables").font(.callout.weight(.semibold))
+                Text("Environment variables").font(DS.Font.panelTitle)
                 Spacer()
                 Picker("Environment", selection: $draft.environmentName) {
                     ForEach(ProjectEnvironment.defaultNames, id: \.self) { Text($0).tag($0) }
@@ -142,13 +142,13 @@ struct NewProjectForm: View {
                     TextField("", text: binding(row.id, \.key), prompt: Text("API_KEY"))
                         .textFieldStyle(.plain)
                         .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(draft.keyIssue(for: row) == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(.red))
+                        .foregroundStyle(draft.keyIssue(for: row) == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(DS.Status.danger))
                         .help(draft.keyIssue(for: row) ?? "")
                 }
                 .width(TextWidth.fit(draft.rows.map(\.key) + ["API_KEY"], monospaced: true, extra: 20, min: 80, max: 260))
 
                 TableColumn("Value") { row in
-                    HStack(spacing: 6) {
+                    HStack(spacing: DS.Space.s) {
                         // SECURITY: masked by default; the eye only reveals what
                         // the user just typed (nothing is read from the Keychain).
                         Group {
@@ -199,7 +199,7 @@ struct NewProjectForm: View {
                 TableColumn("Link") { row in
                     TextField("", text: binding(row.id, \.link), prompt: Text(verbatim: "https://…"))
                         .textFieldStyle(.plain)
-                        .foregroundStyle(draft.linkIssue(for: row) == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(.red))
+                        .foregroundStyle(draft.linkIssue(for: row) == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(DS.Status.danger))
                         .help(draft.linkIssue(for: row) ?? "Where to get or manage this value")
                 }
                 .width(TextWidth.fit(draft.rows.map(\.link) + ["https://…"], extra: 20, min: 100, max: 360))
@@ -221,7 +221,7 @@ struct NewProjectForm: View {
                 Spacer()
                 Text(issueSummary ?? "Values are stored in your Mac’s Keychain, never in the database.")
                     .font(.caption)
-                    .foregroundStyle(issueSummary == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                    .foregroundStyle(issueSummary == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
             }
             .buttonStyle(.borderless)
             .clickableCursor()

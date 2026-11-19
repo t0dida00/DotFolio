@@ -22,13 +22,13 @@ struct ProjectPreview: View {
         // every row instead of scrolling on its own.
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: DS.Space.l) {
                     header
                     infoGrid
                     Divider()
                     envSection
                 }
-                .padding(20)
+                .padding(DS.Space.xl)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -37,8 +37,8 @@ struct ProjectPreview: View {
             if let environment {
                 AddVariableCard(environment: environment, nameFocused: $addNameFocused)
                     .id(environment.id)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, DS.Space.xl)
+                    .padding(.vertical, DS.Space.m)
                     .background(.bar)
                     .overlay(alignment: .top) { Divider() }
             }
@@ -57,11 +57,11 @@ struct ProjectPreview: View {
     }
 
     private var readOnlyHeader: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: DS.Space.m) {
             ProjectTile(provider: project.provider, size: 52)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
                 Text(project.name)
-                    .font(.title2.weight(.semibold))
+                    .font(DS.Font.pageTitle)
                     .lineLimit(2)
                     .textSelection(.enabled)
                 if !project.summary.isEmpty {
@@ -82,11 +82,11 @@ struct ProjectPreview: View {
                 .clickableCursor()
             Button(role: .destructive, action: onDelete) {
                 Image(systemName: "trash")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(DS.Status.danger)
             }
                 .symbolMotion(.wiggle)
                 .buttonStyle(.bordered)
-                .tint(.red)
+                .tint(DS.Status.danger)
                 .controlSize(.large)
                 .buttonBorderShape(.capsule)
                 .help("Delete project…")
@@ -96,11 +96,11 @@ struct ProjectPreview: View {
     }
 
     private var infoGrid: some View {
-        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 6) {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.m, verticalSpacing: DS.Space.s) {
             if let url = project.repoURL {
                 GridRow {
                     label(project.provider == .none ? "Link" : "Repository")
-                    HStack(spacing: 6) {
+                    HStack(spacing: DS.Space.s) {
                         ProviderIcon(provider: project.provider).foregroundStyle(.secondary)
                         LinkText(url: url, title: project.repoFullName.isEmpty ? (url.host() ?? url.absoluteString) : project.repoFullName)
                             .fixedSize()
@@ -120,7 +120,7 @@ struct ProjectPreview: View {
             GridRow {
                 label("Variables")
                 Text(variablesSummary)
-                    .foregroundStyle(missingCount > 0 ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary))
+                    .foregroundStyle(missingCount > 0 ? AnyShapeStyle(DS.Status.warning) : AnyShapeStyle(.primary))
             }
             GridRow {
                 label("Created")
@@ -152,7 +152,7 @@ struct ProjectPreview: View {
     // MARK: Bottom: .env table
 
     private var envSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
             HStack {
                 if let environment {
                     ExportMenu(project: project, environment: environment)

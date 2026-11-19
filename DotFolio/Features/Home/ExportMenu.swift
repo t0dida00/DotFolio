@@ -34,7 +34,7 @@ struct ExportMenu: View {
     private var fileName: String { EnvExport.fileName(for: environment) }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DS.Space.s) {
             Menu {
                 Button("Copy to Clipboard", systemImage: "doc.on.clipboard") { request(.clipboard) }
                 Divider()
@@ -60,7 +60,7 @@ struct ExportMenu: View {
             if let notice {
                 Label(notice.text, systemImage: notice.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                     .font(.callout)
-                    .foregroundStyle(notice.isError ? AnyShapeStyle(.red) : AnyShapeStyle(.green))
+                    .foregroundStyle(notice.isError ? AnyShapeStyle(DS.Status.danger) : AnyShapeStyle(DS.Status.success))
                     .lineLimit(2)
                     .symbolMotion(notice.isError ? .wiggle : .bounce, onAppear: true)
                     // A new notice is a new view, so its icon plays again.

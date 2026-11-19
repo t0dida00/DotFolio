@@ -8,7 +8,7 @@ struct SheetButtons: View {
     let onConfirm: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DS.Space.m) {
             Button("Cancel", action: onCancel)
                 .keyboardShortcut(.cancelAction)
                 .clickableCursor()

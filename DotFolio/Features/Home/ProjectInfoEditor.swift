@@ -31,13 +31,13 @@ struct ProjectInfoEditor: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: DS.Space.m) {
+            HStack(spacing: DS.Space.m) {
                 ProjectTile(provider: project.provider, size: 52)
-                Text("Edit Project").font(.title2.weight(.semibold))
+                Text("Edit Project").font(DS.Font.pageTitle)
             }
 
-            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 10, verticalSpacing: 8) {
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.s, verticalSpacing: DS.Space.s) {
                 GridRow {
                     label("Project name")
                     TextField("", text: $name, prompt: Text("My App"))
@@ -50,14 +50,14 @@ struct ProjectInfoEditor: View {
                 }
                 GridRow {
                     label("Project link")
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: DS.Space.xxs) {
                         TextField("", text: $link, prompt: Text(verbatim: "https://github.com/owner/repo (optional)"))
                         Text(linkHint).font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 GridRow {
                     label("Local folder")
-                    HStack(spacing: 8) {
+                    HStack(spacing: DS.Space.s) {
                         Text(folderPath ?? "Not set")
                             .foregroundStyle(folderPath == nil ? .secondary : .primary)
                             .lineLimit(1)
@@ -82,7 +82,7 @@ struct ProjectInfoEditor: View {
             .textFieldStyle(.roundedBorder)
 
             HStack {
-                if let error { Text(error).font(.callout).foregroundStyle(.red) }
+                if let error { Text(error).font(.callout).foregroundStyle(DS.Status.danger) }
                 Spacer()
                 Button("Cancel", action: onDone)
                     .buttonStyle(.bordered)
@@ -96,7 +96,7 @@ struct ProjectInfoEditor: View {
             .buttonBorderShape(.capsule)
             .clickableCursor()
         }
-        .padding(14)
+        .padding(DS.Space.m)
         .panel(radius: DS.Radius.medium, bordered: true)
         .onAppear {
             nameFocused = true

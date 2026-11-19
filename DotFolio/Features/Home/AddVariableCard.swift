@@ -21,13 +21,16 @@ struct AddVariableCard: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
             HStack {
                 Label("Add variable", systemImage: "plus.circle")
-                    .font(.callout.weight(.semibold))
+                    .font(DS.Font.panelTitle)
                     .symbolMotion(.bounce)
                 Spacer()
-                Text("to \(environment.name)")
+                HStack(spacing: DS.Space.xs) {
+                    Text("to")
+                    EnvLabel(name: environment.name)
+                }
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -62,7 +65,7 @@ struct AddVariableCard: View {
             HStack {
                 Text(errorMessage ?? "The value is saved to your Keychain.")
                     .font(.caption)
-                    .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                    .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
                     .lineLimit(2)
                 Spacer()
                 Button(action: add) {
@@ -78,7 +81,7 @@ struct AddVariableCard: View {
         }
         .textFieldStyle(.roundedBorder)
         .onSubmit(add)
-        .padding(14)
+        .padding(DS.Space.m)
         .panel(radius: DS.Radius.medium, bordered: true)
     }
 
@@ -108,9 +111,9 @@ private struct LabeledField<Field: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
             Text(title)
-                .font(.caption.weight(.medium))
+                .font(DS.Font.label)
                 .foregroundStyle(.secondary)
             field
         }

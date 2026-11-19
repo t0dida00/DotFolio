@@ -25,6 +25,24 @@ extension ServiceType {
     static func symbol(for name: String) -> String {
         ServiceType(matching: name)?.symbol ?? ServiceType.custom.symbol
     }
+
+    /// Hue for a provider's icon tile.
+    var tint: Color {
+        switch self {
+        case .firebase: DS.Palette.orange
+        case .supabase: DS.Palette.aqua
+        case .stripe: DS.Palette.violet
+        case .aws: DS.Palette.yellow
+        case .googleCloud: DS.Palette.blue
+        case .googleMaps: DS.Palette.green
+        case .vercel: DS.Palette.neutral
+        case .custom: DS.Palette.magenta
+        }
+    }
+
+    static func tint(for name: String) -> Color {
+        (ServiceType(matching: name) ?? .custom).tint
+    }
 }
 
 extension ServiceCategory {
@@ -50,6 +68,24 @@ extension ServiceCategory {
     static func symbol(for name: String) -> String {
         (ServiceCategory(matching: name) ?? .other).symbol
     }
+
+    /// Grouped hues: data → blue, money → green, identity & AI → violet,
+    /// comms → magenta, observability → orange, infrastructure → aqua.
+    var tint: Color {
+        switch self {
+        case .database, .cache, .storage, .search, .queue: DS.Palette.blue
+        case .payments: DS.Palette.green
+        case .auth, .ai: DS.Palette.violet
+        case .email: DS.Palette.magenta
+        case .analytics, .monitoring: DS.Palette.orange
+        case .hosting, .maps: DS.Palette.aqua
+        case .other: DS.Palette.neutral
+        }
+    }
+
+    static func tint(for name: String) -> Color {
+        (ServiceCategory(matching: name) ?? .other).tint
+    }
 }
 
 /// Square tile: the service's icon for single-service accounts, a person for
@@ -59,11 +95,11 @@ struct AccountTile: View {
     var size: CGFloat = 28
 
     var body: some View {
-        Image(systemName: services.count == 1 ? ServiceType.symbol(for: services[0]) : "person.crop.circle")
-            .font(.system(size: size * 0.42))
-            .foregroundStyle(.secondary)
-            .frame(width: size, height: size)
-            .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+        if services.count == 1 {
+            TintedIcon(symbol: ServiceType.symbol(for: services[0]), tint: ServiceType.tint(for: services[0]), size: size)
+        } else {
+            TintedIcon(symbol: "person.crop.circle", tint: DS.Palette.violet, size: size)
+        }
     }
 }
 
@@ -97,14 +133,14 @@ struct AccountList: View {
         } else {
             List(selection: $selection) {
                 ForEach(rows) { account in
-                    HStack(spacing: 10) {
+                    HStack(spacing: DS.Space.s) {
                         AccountTile(services: account.services)
-                        VStack(alignment: .leading, spacing: 1) {
+                        VStack(alignment: .leading, spacing: DS.Space.xxs) {
                             Text(account.login).lineLimit(1).truncationMode(.middle)
                             Text(subtitle(account)).font(.callout).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
-                    .padding(.vertical, 3)
+                    .padding(.vertical, DS.Space.xs)
                     .clickableCursor()
                     .tag(account.persistentModelID)
                     .contextMenu {
@@ -148,12 +184,12 @@ struct AccountDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: DS.Space.xl) {
                 header
                 AccountFields(draft: $draft)
                 if draft != AccountDraft(account) || error != nil {
                     HStack {
-                        if let error { Text(error).font(.callout).foregroundStyle(.red) }
+                        if let error { Text(error).font(.callout).foregroundStyle(DS.Status.danger) }
                         Spacer()
                         Button("Revert") { draft = AccountDraft(account); error = nil }
                             .buttonStyle(.bordered)
@@ -169,7 +205,7 @@ struct AccountDetailView: View {
                 Divider()
                 usedBy
             }
-            .padding(20)
+            .padding(DS.Space.xl)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .scrollBounceBehavior(.basedOnSize)
@@ -179,19 +215,19 @@ struct AccountDetailView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: DS.Space.m) {
             AccountTile(services: account.services, size: 52)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(account.login).font(.title2.weight(.semibold)).textSelection(.enabled).lineLimit(2)
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
+                Text(account.login).font(DS.Font.pageTitle).textSelection(.enabled).lineLimit(2)
                 Text(account.displayName.isEmpty ? account.serviceSummary : "\(account.displayName) · \(account.serviceSummary)")
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 12)
             Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash").foregroundStyle(.red)
+                Image(systemName: "trash").foregroundStyle(DS.Status.danger)
             }
             .buttonStyle(.bordered)
-            .tint(.red)
+            .tint(DS.Status.danger)
             .controlSize(.large)
             .buttonBorderShape(.capsule)
             .help("Delete account…")
@@ -204,10 +240,10 @@ struct AccountDetailView: View {
     /// section lists #, Service, Provider, Link — one row per distinct
     /// (service, provider, console link) among that project's variables.
     private var usedBy: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
             let groups = usedByGroups
             HStack(alignment: .firstTextBaseline) {
-                Text("Used by").font(.headline)
+                Text("Used by").font(DS.Font.sectionTitle)
                 if groups.count > 1 {
                     Text("\(groups.count) projects").foregroundStyle(.secondary)
                     Spacer()
@@ -226,7 +262,7 @@ struct AccountDetailView: View {
                 Text("No variables use this account yet. Set it in a variable’s Account column.")
                     .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: DS.Space.s) {
                     ForEach(groups) { group in
                         UsedBySection(
                             group: group,
@@ -335,7 +371,7 @@ struct AccountFields: View {
     @Binding var draft: AccountDraft
 
     var body: some View {
-        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 10) {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.m, verticalSpacing: DS.Space.s) {
             GridRow {
                 label("Login")
                 TextField("", text: $draft.login, prompt: Text("email or username"))
@@ -375,9 +411,9 @@ struct ServiceChips: View {
     }
 
     var body: some View {
-        FlowLayout(spacing: 6) {
+        FlowLayout(spacing: DS.Space.s) {
             ForEach(services, id: \.self) { service in
-                HStack(spacing: 5) {
+                HStack(spacing: DS.Space.xs) {
                     Image(systemName: ServiceType.symbol(for: service))
                     Text(service)
                     Button {
@@ -409,7 +445,7 @@ struct ServiceChips: View {
                     Button("Other…") { addingCustom = true }
                 } label: {
                     // Same shape as the service chips, so the row reads as one set.
-                    HStack(spacing: 5) {
+                    HStack(spacing: DS.Space.xs) {
                         Image(systemName: "plus")
                         Text("Add Provider")
                     }
@@ -446,8 +482,8 @@ private struct ServicesSection: View {
     let account: Account
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Projects by provider").font(.headline)
+        VStack(alignment: .leading, spacing: DS.Space.m) {
+            Text("Projects by provider").font(DS.Font.sectionTitle)
             Text("The projects inside each provider — e.g. a Firebase project ID. Open the console straight from here.")
                 .font(.callout).foregroundStyle(.secondary)
 
@@ -482,13 +518,13 @@ private struct ServiceProjectsBlock: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
             Label(service, systemImage: ServiceType.symbol(for: service))
-                .font(.callout.weight(.semibold))
+                .font(DS.Font.panelTitle)
 
             ForEach(items) { sp in
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: DS.Space.s) {
+                    VStack(alignment: .leading, spacing: DS.Space.xxs) {
                         Text(sp.name).fontWeight(.medium)
                         if !sp.externalID.isEmpty {
                             Text(sp.externalID).font(.callout.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
@@ -506,11 +542,11 @@ private struct ServiceProjectsBlock: View {
                         .accessibilityLabel("Remove \(sp.name)")
                         .clickableCursor()
                 }
-                .padding(10)
+                .padding(DS.Space.s)
                 .panel(radius: DS.Radius.medium)
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: DS.Space.s) {
                 TextField("", text: $newName, prompt: Text("Project name"))
                 TextField("", text: $newID, prompt: Text("Project ID"))
                     .font(.body.monospaced())
@@ -522,9 +558,9 @@ private struct ServiceProjectsBlock: View {
             .textFieldStyle(.roundedBorder)
             .onSubmit(add)
 
-            if let error { Text(error).font(.callout).foregroundStyle(.red) }
+            if let error { Text(error).font(.callout).foregroundStyle(DS.Status.danger) }
         }
-        .padding(12)
+        .padding(DS.Space.m)
         .overlay(RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous).strokeBorder(.separator))
     }
 
@@ -550,18 +586,18 @@ struct NewAccountForm: View {
     @State private var error: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: DS.Space.l) {
+            HStack(spacing: DS.Space.m) {
                 AccountTile(services: draft.services, size: 52)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("New Account").font(.title2.weight(.semibold))
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
+                    Text("New Account").font(DS.Font.pageTitle)
                     Text("A login you use with one or more providers — e.g. your Gmail for Firebase, Google Cloud and Maps.")
                         .foregroundStyle(.secondary)
                 }
             }
             AccountFields(draft: $draft)
             HStack {
-                if let error { Text(error).font(.callout).foregroundStyle(.red) }
+                if let error { Text(error).font(.callout).foregroundStyle(DS.Status.danger) }
                 Spacer()
                 Button("Cancel", action: onCancel)
                     .buttonStyle(.bordered)
@@ -576,7 +612,7 @@ struct NewAccountForm: View {
             .clickableCursor()
             Spacer()
         }
-        .padding(20)
+        .padding(DS.Space.xl)
         .frame(maxWidth: 640, maxHeight: .infinity, alignment: .topLeading)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -647,17 +683,17 @@ private struct UsedBySection: View {
             if isExpanded {
                 Divider()
                 table
-                    .padding(8)
+                    .padding(DS.Space.s)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(.quaternary.opacity(DS.Fill.subtle), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.separator))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DS.Space.s) {
             Image(systemName: "chevron.right")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
@@ -677,13 +713,13 @@ private struct UsedBySection: View {
                 .opacity(isHovering || isExpanded ? 1 : 0)
                 .clickableCursor()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
+        .padding(.horizontal, DS.Space.m)
+        .padding(.vertical, DS.Space.s)
         .contentShape(Rectangle())
         // An explicit Rectangle: a bare ShapeStyle background takes on the
         // card's rounded corners on macOS 26 and leaves the bottom corners bare.
         .background {
-            Rectangle().fill(isHovering ? AnyShapeStyle(.quaternary.opacity(0.5)) : AnyShapeStyle(Color.clear))
+            Rectangle().fill(isHovering ? AnyShapeStyle(.quaternary.opacity(DS.Fill.control)) : AnyShapeStyle(Color.clear))
         }
         .onTapGesture { isExpanded.toggle() }
         .onHover { isHovering = $0 }

@@ -32,7 +32,7 @@ struct EnvEditor: View {
     private var variables: [Variable] { environment.sortedVariables }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
             table
             footer
         }
@@ -102,7 +102,7 @@ struct EnvEditor: View {
             // What the value is for. A guess from the provider shows as the
             // prompt until a category is chosen.
             TableColumn("Service") { v in
-                HStack(spacing: 4) {
+                HStack(spacing: DS.Space.xs) {
                     CommitField(text: v.serviceCategory, prompt: v.displayCategory.isEmpty ? "e.g. Database" : v.displayCategory) { new in
                         VariableEditor.setCategory(v, to: new)
                         return true
@@ -116,7 +116,7 @@ struct EnvEditor: View {
 
             // Who provides it.
             TableColumn("Provider") { v in
-                HStack(spacing: 4) {
+                HStack(spacing: DS.Space.xs) {
                     CommitField(text: v.displayService, prompt: "e.g. Supabase") { new in
                         VariableEditor.setService(v, to: new)
                         return true
@@ -129,7 +129,7 @@ struct EnvEditor: View {
             .width(min: widths.service, ideal: widths.service)
 
             TableColumn("Account") { v in
-                HStack(spacing: 4) {
+                HStack(spacing: DS.Space.xs) {
                     CommitField(text: v.account?.login ?? "", prompt: "email or username") { new in
                         VariableEditor.setAccount(v, login: new, context: context)
                         return true
@@ -142,7 +142,7 @@ struct EnvEditor: View {
             .width(min: widths.account, ideal: widths.account)
 
             TableColumn("Link") { v in
-                HStack(spacing: 6) {
+                HStack(spacing: DS.Space.s) {
                     CommitField(text: v.sourceURL?.absoluteString ?? "", prompt: "https://…") { new in
                         attempt { try VariableEditor.setLink(v, to: new) }
                     }
@@ -190,7 +190,7 @@ struct EnvEditor: View {
 
     @ViewBuilder
     private func valueCell(_ v: Variable) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: DS.Space.s) {
             if let plain = revealed[v.id] {
                 CommitField(text: plain, prompt: "value", monospaced: true) { new in
                     attempt {
@@ -243,11 +243,11 @@ struct EnvEditor: View {
                 .help("Delete selected")
                 .accessibilityLabel("Delete selected variables")
             copyMenu
-                .padding(.leading, 10)
+                .padding(.leading, DS.Space.s)
             Spacer()
             Text(errorMessage ?? copyNotice ?? "Values live in your Keychain. Reveal and Copy ask for Touch ID.")
                 .font(.caption)
-                .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
                 .lineLimit(2)
         }
         .buttonStyle(.borderless)

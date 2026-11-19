@@ -8,6 +8,7 @@ import SwiftUI
 struct RootView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppNavigation.self) private var navigation
+    @Environment(UpdateCenter.self) private var updates
     @State private var flow = ConnectionFlowModel()
     @State private var eraseError: String?
 
@@ -22,6 +23,12 @@ struct RootView: View {
                            secrets: KeychainStore.secrets(bundleID: DotFolioApp.bundleID))
         }
         .sheet(isPresented: $navigation.isVerifyingData) { VerifyDataSheet() }
+        .sheet(isPresented: Binding(get: { updates.isShowingResult }, set: { updates.isShowingResult = $0 })) {
+            UpdateResultSheet(center: updates)
+        }
+        .sheet(isPresented: Binding(get: { updates.isShowingWhatsNew }, set: { updates.isShowingWhatsNew = $0 })) {
+            WhatsNewSheet(center: updates)
+        }
         .confirmationDialog("Erase all DotFolio data?", isPresented: $navigation.isConfirmingErase) {
             Button("Erase All Data", role: .destructive, action: eraseAll)
         } message: {
@@ -82,4 +89,5 @@ struct RootView: View {
         .modelContainer(try! DotFolioSchema.makeContainer(inMemory: true))
         .environment(AppNavigation())
         .environment(SessionLock())
+        .environment(UpdateCenter())
 }

@@ -9,9 +9,9 @@ struct WelcomeView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                VStack(spacing: 8) {
+                VStack(spacing: DS.Space.s) {
                     AppMark(size: 96)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, DS.Space.m)
                     Text("Welcome to DotFolio")
                         .font(.largeTitle.weight(.bold))
                     Text("Keep every project’s secrets in your Keychain — and remember where each one came from.")
@@ -21,7 +21,7 @@ struct WelcomeView: View {
                         .frame(maxWidth: 440)
                 }
 
-                VStack(spacing: 10) {
+                VStack(spacing: DS.Space.s) {
                     Button(action: flow.connectGitHub) {
                         ProviderLabel(brand: .github, title: "Continue with GitHub")
                     }
@@ -38,9 +38,9 @@ struct WelcomeView: View {
                 .buttonBorderShape(.capsule)
                 .clickableCursor()
                 .frame(width: 320)
-                .padding(.top, 28)
+                .padding(.top, DS.Space.xxl)
 
-                HStack(spacing: 10) {
+                HStack(spacing: DS.Space.s) {
                     Button("Add project manually") { showNewProject = true }
                         .keyboardShortcut("n")
                     if FeatureFlags.gitLab {
@@ -50,12 +50,12 @@ struct WelcomeView: View {
                 }
                 .buttonStyle(.link)
                 .clickableCursor()
-                .padding(.top, 14)
+                .padding(.top, DS.Space.m)
 
-                HStack(alignment: .top, spacing: 28) {
-                    Promise(symbol: "eye", motion: .bounce, title: "Read-only repos", detail: "Never pushes or writes to your repos.")
-                    Promise(symbol: "key.horizontal", motion: .wiggle, title: "Secrets stay on this Mac", detail: "Stored in Keychain, never in the database.")
-                    Promise(symbol: "touchid", motion: .pulse, title: "Touch ID", detail: "Locks itself when you step away.")
+                HStack(alignment: .top, spacing: DS.Space.xxl) {
+                    Promise(symbol: "eye", tint: DS.Palette.blue, motion: .bounce, title: "Read-only repos", detail: "Never pushes or writes to your repos.")
+                    Promise(symbol: "key.horizontal", tint: DS.Palette.violet, motion: .wiggle, title: "Secrets stay on this Mac", detail: "Stored in Keychain, never in the database.")
+                    Promise(symbol: "touchid", tint: DS.Palette.magenta, motion: .pulse, title: "Touch ID", detail: "Locks itself when you step away.")
                 }
                 .frame(maxWidth: 640)
                 .padding(.top, 44)
@@ -72,17 +72,14 @@ struct WelcomeView: View {
 
 private struct Promise: View {
     let symbol: String
+    var tint: Color = DS.Palette.violet
     let motion: SymbolMotion
     let title: String
     let detail: String
 
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: symbol)
-                .font(.system(size: 17))
-                .foregroundStyle(.secondary)
-                .frame(width: 40, height: 40)
-                .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
+        VStack(spacing: DS.Space.s) {
+            TintedIcon(symbol: symbol, tint: tint, size: 40)
                 .symbolMotion(motion, onAppear: true)
             Text(title).fontWeight(.semibold)
             Text(detail)
@@ -101,7 +98,7 @@ struct ProviderLabel: View {
     let title: String
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: DS.Space.s) {
             brand.image.resizable().scaledToFit().frame(width: 16, height: 16)
             Text(title)
         }

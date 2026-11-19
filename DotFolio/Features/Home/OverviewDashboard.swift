@@ -13,9 +13,9 @@ struct OverviewDashboard: View {
     var body: some View {
         let stats = OverviewStats(projects: projects, accounts: accounts)
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Overview").font(.title2.weight(.semibold))
+            VStack(alignment: .leading, spacing: DS.Space.xl) {
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
+                    Text("Overview").font(DS.Font.pageTitle)
                     Text("Select a project to open it in a tab.").foregroundStyle(.secondary)
                 }
 
@@ -23,15 +23,18 @@ struct OverviewDashboard: View {
 
                 health(stats)
 
-                Card(title: "Providers in use", subtitle: "Variables per provider, longest bar = most used") {
-                    UsageBars(items: stats.services, symbol: ServiceType.symbol(for:),
-                              emptyText: "Set a Provider on your variables to see usage here.", noun: "providers")
+                // Side by side, half the width each; both as tall as the taller one.
+                HStack(alignment: .top, spacing: DS.Space.l) {
+                    Card(title: "Providers in use", subtitle: "Variables per provider, longest bar = most used") {
+                        UsageBars(items: stats.services, symbol: ServiceType.symbol(for:), tint: ServiceType.tint(for:),
+                                  emptyText: "Set a Provider on your variables to see usage here.", noun: "providers")
+                    }
+                    Card(title: "Services in use", subtitle: "Variables per service — what they’re for") {
+                        UsageBars(items: stats.categories, symbol: ServiceCategory.symbol(for:), tint: ServiceCategory.tint(for:),
+                                  emptyText: "Set a Service (Database, Cache…) on your variables to see this.", noun: "services")
+                    }
                 }
-
-                Card(title: "Services in use", subtitle: "Variables per service — what they’re for") {
-                    UsageBars(items: stats.categories, symbol: ServiceCategory.symbol(for:),
-                              emptyText: "Set a Service (Database, Cache…) on your variables to see this.", noun: "services")
-                }
+                .fixedSize(horizontal: false, vertical: true)
 
                 Card(title: "Values filled by environment", subtitle: "Variables with a stored value") {
                     EnvironmentMeters(environments: stats.environments)
@@ -42,7 +45,7 @@ struct OverviewDashboard: View {
                     AccountRanking(ranks: stats.accountRanking)
                 }
 
-                HStack(alignment: .top, spacing: 16) {
+                HStack(alignment: .top, spacing: DS.Space.l) {
                     Card(title: "Needs attention", subtitle: "Projects with the most missing values") {
                         AttentionList(items: stats.attention, onOpen: onOpenProject)
                     }
@@ -52,7 +55,7 @@ struct OverviewDashboard: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(20)
+            .padding(DS.Space.xl)
             .frame(maxWidth: 1100, alignment: .topLeading)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
@@ -62,14 +65,14 @@ struct OverviewDashboard: View {
     // MARK: KPI tiles
 
     private func kpis(_ s: OverviewStats) -> some View {
-        HStack(spacing: 12) {
-            StatTile(symbol: "folder", value: s.projectCount, label: "Projects tracked",
+        HStack(spacing: DS.Space.m) {
+            StatTile(symbol: "folder", tint: DS.Palette.violet, value: s.projectCount, label: "Projects tracked",
                      detail: "\(s.repoProjectCount) from repos · \(s.projectCount - s.repoProjectCount) manual")
-            StatTile(symbol: "key.horizontal", value: s.variableCount, label: "Variables",
+            StatTile(symbol: "key.horizontal", tint: DS.Palette.blue, value: s.variableCount, label: "Variables",
                      detail: "\(percent(s.valueCoverage)) have a value")
-            StatTile(symbol: "square.stack.3d.up", value: s.serviceCount, label: "Providers in use",
+            StatTile(symbol: "square.stack.3d.up", tint: DS.Palette.aqua, value: s.serviceCount, label: "Providers in use",
                      detail: s.services.first.map { "Most used: \($0.name)" } ?? "None linked yet")
-            StatTile(symbol: "person.crop.circle", value: s.accountCount, label: "Accounts",
+            StatTile(symbol: "person.crop.circle", tint: DS.Palette.magenta, value: s.accountCount, label: "Accounts",
                      detail: s.accountRanking.first.map { "\($0.account.login)" } ?? "None yet")
         }
     }
@@ -77,7 +80,7 @@ struct OverviewDashboard: View {
     // MARK: Health
 
     private func health(_ s: OverviewStats) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DS.Space.m) {
             HealthTile(symbol: "exclamationmark.circle", value: s.missingCount, label: "Missing values",
                        detail: "No value stored yet", isWarning: s.missingCount > 0)
             HealthTile(symbol: "questionmark.circle", value: s.noSourceCount, label: "No source",
@@ -99,15 +102,17 @@ struct OverviewDashboard: View {
 /// Headline number (a stat tile, not a chart).
 private struct StatTile: View {
     let symbol: String
+    var tint: Color = DS.Palette.violet
     let value: Int
     let label: String
     let detail: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(label, systemImage: symbol)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: DS.Space.s) {
+            HStack(spacing: DS.Space.s) {
+                TintedIcon(symbol: symbol, tint: tint, size: 24)
+                Text(label).font(.callout).foregroundStyle(.secondary)
+            }
             Text(value, format: .number)
                 .font(.system(size: 30, weight: .semibold, design: .rounded).monospacedDigit())
                 .contentTransition(.numericText(value: Double(value)))
@@ -117,7 +122,7 @@ private struct StatTile: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
-        .padding(14)
+        .padding(DS.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .panel(radius: DS.Radius.medium)
         .accessibilityElement(children: .combine)
@@ -133,14 +138,11 @@ private struct HealthTile: View {
     let isWarning: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: isWarning ? symbol : "checkmark.circle")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(isWarning ? .orange : .green)
-                .frame(width: 34, height: 34)
-                .background((isWarning ? Color.orange : .green).opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
+        HStack(spacing: DS.Space.m) {
+            TintedIcon(symbol: isWarning ? symbol : "checkmark.circle",
+                       tint: isWarning ? DS.Status.warning : DS.Status.success, size: 34)
+            VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                HStack(alignment: .firstTextBaseline, spacing: DS.Space.s) {
                     Text(value, format: .number).font(.title3.weight(.semibold).monospacedDigit())
                     Text(label).font(.callout).lineLimit(1)
                 }
@@ -152,7 +154,7 @@ private struct HealthTile: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(12)
+        .padding(DS.Space.m)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .panel(radius: DS.Radius.medium)
         .accessibilityElement(children: .combine)
@@ -167,6 +169,7 @@ private struct HealthTile: View {
 private struct UsageBars: View {
     let items: [OverviewStats.ServiceUsage]
     let symbol: (String) -> String
+    let tint: (String) -> Color
     let emptyText: String
     let noun: String
 
@@ -178,9 +181,9 @@ private struct UsageBars: View {
         if items.isEmpty {
             EmptyNote(text: emptyText)
         } else {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: DS.Space.s) {
                 ForEach(shown) { item in
-                    UsageBarRow(item: item, symbol: symbol(item.name),
+                    UsageBarRow(item: item, symbol: symbol(item.name), tint: tint(item.name),
                                 fraction: Double(item.variables) / Double(maxValue), labelWidth: labelWidth)
                 }
                 if items.count > shown.count {
@@ -195,16 +198,15 @@ private struct UsageBars: View {
 private struct UsageBarRow: View {
     let item: OverviewStats.ServiceUsage
     let symbol: String
+    let tint: Color
     let fraction: Double
     let labelWidth: CGFloat
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DS.Space.s) {
             // Fixed icon column so every name starts at the same x.
-            Image(systemName: symbol)
-                .foregroundStyle(.secondary)
-                .frame(width: 18, alignment: .center)
+            TintedIcon(symbol: symbol, tint: tint, size: 22)
             Text(item.name)
                 .font(.callout)
                 .lineLimit(1)
@@ -239,11 +241,11 @@ private struct EnvironmentMeters: View {
         if environments.isEmpty {
             EmptyNote(text: "No variables yet.")
         } else {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: DS.Space.m) {
                 ForEach(environments) { env in
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: DS.Space.xs) {
                         HStack {
-                            Text(env.name).font(.callout.weight(.medium))
+                            EnvLabel(name: env.name).font(.callout.weight(.medium))
                             Spacer()
                             Text("\(env.withValue) / \(env.total)")
                                 .font(.callout.monospacedDigit())
@@ -255,7 +257,7 @@ private struct EnvironmentMeters: View {
                         GeometryReader { proxy in
                             ZStack(alignment: .leading) {
                                 Capsule().fill(.quaternary)
-                                Capsule().fill(Color.accentColor)
+                                Capsule().fill(DS.Env.color(for: env.name))
                                     .frame(width: max(env.fraction > 0 ? 6 : 0, proxy.size.width * env.fraction))
                             }
                         }
@@ -280,7 +282,7 @@ private struct AccountRanking: View {
         if ranks.isEmpty {
             EmptyNote(text: "Add accounts in the Accounts tab, or type an email in a variable’s Account column.")
         } else {
-            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 8) {
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.l, verticalSpacing: DS.Space.s) {
                 GridRow {
                     Text("#")
                     Text("Account")
@@ -288,7 +290,7 @@ private struct AccountRanking: View {
                     Text("Projects").gridColumnAlignment(.trailing)
                     Text("Variables").gridColumnAlignment(.trailing)
                 }
-                .font(.caption.weight(.medium))
+                .font(DS.Font.label)
                 .foregroundStyle(.secondary)
 
                 Divider()
@@ -323,9 +325,9 @@ private struct AttentionList: View {
     var body: some View {
         if items.isEmpty {
             Label("Every variable has a value.", systemImage: "checkmark.circle")
-                .foregroundStyle(.green)
+                .foregroundStyle(DS.Status.success)
         } else {
-            VStack(spacing: 4) {
+            VStack(spacing: DS.Space.xs) {
                 ForEach(items) { item in
                     RowButton(action: { onOpen(item.project) }) {
                         ProjectTile(provider: item.project.provider, size: 24)
@@ -333,7 +335,7 @@ private struct AttentionList: View {
                         Spacer()
                         Label("\(item.missing) of \(item.total) missing", systemImage: "exclamationmark.circle")
                             .font(.callout.monospacedDigit())
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(DS.Status.warning)
                     }
                 }
             }
@@ -349,13 +351,13 @@ private struct RecentList: View {
         if variables.isEmpty {
             EmptyNote(text: "No variables yet.")
         } else {
-            VStack(spacing: 4) {
+            VStack(spacing: DS.Space.xs) {
                 ForEach(variables) { v in
                     RowButton(action: { if let p = v.project { onOpen(p) } }) {
                         Image(systemName: v.hasValue ? "key.fill" : "key")
                             .foregroundStyle(.secondary)
                             .frame(width: 24)
-                        VStack(alignment: .leading, spacing: 1) {
+                        VStack(alignment: .leading, spacing: DS.Space.xxs) {
                             Text(v.key).font(.callout.monospaced()).lineLimit(1)
                             Text("\(v.project?.name ?? "?") · \(v.environment?.name ?? "?")")
                                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -377,9 +379,9 @@ private struct RowButton<Label: View>: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) { label }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+            HStack(spacing: DS.Space.s) { label }
+                .padding(.horizontal, DS.Space.s)
+                .padding(.vertical, DS.Space.s)
                 .background(.quaternary.opacity(hovering ? 0.6 : 0), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
                 .contentShape(Rectangle())
         }

@@ -42,7 +42,7 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal, 40)
                         .padding(.top, 72)
-                        .padding(.bottom, 32)
+                        .padding(.bottom, DS.Space.xxxl)
                 }
                 .scrollBounceBehavior(.basedOnSize)
             }
@@ -80,7 +80,9 @@ struct AppMark: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
-            .fill(LinearGradient(colors: [Color(white: 0.24), Color(white: 0.09)], startPoint: .top, endPoint: .bottom))
+            // Brand gradient: violet → blue.
+            .fill(LinearGradient(colors: [Color(light: 0x7B6CF0, dark: 0x8F84EC), Color(light: 0x3B5BDB, dark: 0x3F63E0)],
+                                 startPoint: .topLeading, endPoint: .bottomTrailing))
             .frame(width: size, height: size)
             .overlay {
                 Image(systemName: "lock.doc.fill")
@@ -88,7 +90,10 @@ struct AppMark: View {
                     .foregroundStyle(.white)
                     .symbolMotion(.bounce, onAppear: true)
             }
-            .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
+            // Two layers, like a macOS app icon: a tight contact shadow and a
+            // soft ambient one below. Both scale with the mark.
+            .shadow(color: .black.opacity(0.22), radius: size * 0.03, y: size * 0.015)
+            .shadow(color: .black.opacity(0.25), radius: size * 0.14, y: size * 0.08)
             .accessibilityHidden(true)
     }
 }
@@ -106,6 +111,7 @@ enum BrandMark: String {
         .modelContainer(try! DotFolioSchema.makeContainer(inMemory: true))
         .environment(AppNavigation())
         .environment(SessionLock())
+        .environment(UpdateCenter())
 }
 
 #Preview("Failed") {
@@ -113,6 +119,7 @@ enum BrandMark: String {
         .modelContainer(try! DotFolioSchema.makeContainer(inMemory: true))
         .environment(AppNavigation())
         .environment(SessionLock())
+        .environment(UpdateCenter())
 }
 
 #Preview("Self-hosted GitLab") {
@@ -120,6 +127,7 @@ enum BrandMark: String {
         .modelContainer(try! DotFolioSchema.makeContainer(inMemory: true))
         .environment(AppNavigation())
         .environment(SessionLock())
+        .environment(UpdateCenter())
 }
 
 #Preview("Dark") {
@@ -127,5 +135,6 @@ enum BrandMark: String {
         .modelContainer(try! DotFolioSchema.makeContainer(inMemory: true))
         .environment(AppNavigation())
         .environment(SessionLock())
+        .environment(UpdateCenter())
         .preferredColorScheme(.dark)
 }
