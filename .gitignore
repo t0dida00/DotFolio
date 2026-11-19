@@ -1,0 +1,14 @@
+# Xcode / XcodeGen
+*.xcodeproj
+xcuserdata/
+DerivedData/
+.build/
+.swiftpm/
+build/
+
+# Never commit env files
+.env
+.env.*
+!.env.example
+
+.DS_Store

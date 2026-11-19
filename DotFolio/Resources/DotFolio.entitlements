@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- SECURITY: sandboxed. Filesystem access only to folders the user picks. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Outgoing HTTPS only: GitHub/GitLab APIs (read-only). No incoming connections. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Writing exported .env files into the project folder the user selected. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+	<!-- Keychain Sharing. Besides letting the future CLI (same team) share
+	     items, this capability makes Xcode embed a provisioning profile with
+	     application-identifier, which the data protection keychain requires.
+	     Without it, saving values fails with errSecMissingEntitlement. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)app.dotfolio.DotFolio</string>
+	</array>
+</dict>
+</plist>

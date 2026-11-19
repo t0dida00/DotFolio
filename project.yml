@@ -1,0 +1,49 @@
+name: DotFolio
+options:
+  bundleIdPrefix: app.dotfolio
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Free Personal Team (Apple ID in Xcode). The data protection keychain needs
+    # a real signature + provisioning profile; ad-hoc builds get
+    # errSecMissingEntitlement when saving values.
+    DEVELOPMENT_TEAM: 5AXK5DDBB7
+    CODE_SIGN_STYLE: Automatic
+
+packages:
+  DotFolioKit:
+    path: Packages/DotFolioKit
+
+targets:
+  DotFolio:
+    type: application
+    platform: macOS
+    sources:
+      - DotFolio
+    dependencies:
+      - package: DotFolioKit
+        product: DotFolioModels
+      - package: DotFolioKit
+        product: DotFolioSecurity
+      - package: DotFolioKit
+        product: DotFolioCore
+      - package: DotFolioKit
+        product: DotFolioEnv
+      - package: DotFolioKit
+        product: DotFolioIntegrations
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.dotfolio.DotFolio
+        PRODUCT_NAME: DotFolio
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: DotFolio
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        CODE_SIGN_ENTITLEMENTS: DotFolio/Resources/DotFolio.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
