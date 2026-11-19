@@ -16,10 +16,8 @@ struct ConnectionFlowSteps: View {
         case .failed(let failure): FailedStep(model: model, failure: failure)
         case .loading(let message): ProgressStep(title: message, onCancel: model.cancel)
         case .choosingRepos: RepoPickerStep(model: model)
-        case .importing(let done, let total):
-            ProgressStep(title: "Importing \(min(done + 1, total)) of \(total)…",
-                         detail: "Reading each repo’s .env.example", progress: Double(done) / Double(max(total, 1)),
-                         onCancel: model.cancel)
+        case .importing(let done, let total): ImportProgressView(model: model, done: done, total: total)
+        case .importFinished(let summary): ImportFinishedView(model: model, summary: summary)
         }
     }
 }
@@ -52,6 +50,7 @@ private struct WaitingStep: View {
                 .clickableCursor()
                 .foregroundStyle(.secondary)
                 .help("Copy code")
+                .symbolMotion(.bounce)
                 .accessibilityLabel("Copy code")
             }
             .padding(.horizontal, 18)
@@ -72,6 +71,7 @@ private struct WaitingStep: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .clickableCursor()
+                .symbolMotion(.bounceUp)
                 Button("Cancel", action: model.cancel)
                     .buttonStyle(.bordered)
                     .clickableCursor()
@@ -144,6 +144,7 @@ private struct FailedStep: View {
 
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
+                    .symbolMotion(.wiggle, onAppear: true)
                 (Text(failure.title).fontWeight(.semibold) + Text(" ") + Text(failure.message))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -247,7 +248,7 @@ struct ListRow: View {
         HStack(spacing: 12) {
             Group {
                 switch tile {
-                case .symbol(let name): Image(systemName: name).font(.system(size: 16, weight: .regular))
+                case .symbol(let name): Image(systemName: name).font(.system(size: 16, weight: .regular)).symbolMotion(.bounce)
                 case .brand(let mark): mark.image.resizable().scaledToFit().frame(width: 18, height: 18)
                 }
             }
@@ -350,6 +351,7 @@ private struct RepoPickerStep: View {
                 Spacer()
                 Button("Refresh", systemImage: "arrow.clockwise", action: model.refreshRepos)
                     .labelStyle(.iconOnly)
+                    .symbolMotion(.rotate)
                     .buttonStyle(.borderless)
                     .help("Reload the list from GitHub")
                     .clickableCursor()
@@ -391,7 +393,7 @@ private struct RepoPickerStep: View {
             }
 
             HStack {
-                Button("Sign Out of GitHub", action: model.signOutGitHub)
+                Button("Sign Out of GitHub…", action: model.requestSignOutGitHub)
                     .buttonStyle(.link)
                     .clickableCursor()
                 Spacer()
@@ -436,6 +438,7 @@ private struct RepoPickerStep: View {
             if let url = GitHubConfig.installURL {
                 Link(destination: url) { Label("Install on GitHub", systemImage: "arrow.up.forward.square") }
                     .clickableCursor()
+                    .symbolMotion(.bounceUp)
             }
         }
         .padding(16)

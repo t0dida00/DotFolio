@@ -4,8 +4,7 @@ import DotFolioSecurity
 import SwiftData
 import SwiftUI
 
-/// Switches the main window between the home screen and a project's detail
-/// stage (opened by double-clicking a project). Also hosts "Erase All Data".
+/// Hosts the home window plus app-wide confirmations (Erase All Data, sign-out).
 struct RootView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppNavigation.self) private var navigation
@@ -14,22 +13,27 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var navigation = navigation
-        Group {
-            if let project = openProject {
-                ProjectWorkspace(project: project)
-                    .id(project.persistentModelID)
-            } else {
-                HomeView(model: flow)
-            }
-        }
-        .animation(.smooth(duration: 0.2), value: navigation.openProjectID)
+        HomeView(model: flow)
         .onAppear {
-            flow.configure(context: context, tokens: KeychainStore.oauthTokens(bundleID: DotFolioApp.bundleID))
+            flow.configure(context: context,
+                           tokens: KeychainStore.oauthTokens(bundleID: DotFolioApp.bundleID),
+                           secrets: KeychainStore.secrets(bundleID: DotFolioApp.bundleID))
         }
         .confirmationDialog("Erase all DotFolio data?", isPresented: $navigation.isConfirmingErase) {
             Button("Erase All Data", role: .destructive, action: eraseAll)
         } message: {
-            Text("This permanently deletes every project, group, account and variable, and removes all stored values and sign-in tokens from your Keychain. This can’t be undone.")
+            Text("This permanently deletes every project, account and variable, and removes all stored values and sign-in tokens from your Keychain. This can’t be undone.")
+        }
+        .confirmationDialog(
+            "Sign out of GitHub?",
+            isPresented: Binding(get: { flow.pendingSignOut != nil }, set: { if !$0 { flow.pendingSignOut = nil } }),
+            presenting: flow.pendingSignOut
+        ) { plan in
+            Button(plan.projects.isEmpty ? "Sign Out" : "Sign Out and Delete \(plan.projects.count) Projects", role: .destructive) {
+                flow.confirmSignOut()
+            }
+        } message: { plan in
+            Text(signOutMessage(plan))
         }
         .alert("Couldn’t erase data", isPresented: Binding(get: { eraseError != nil }, set: { if !$0 { eraseError = nil } })) {
             Button("OK", role: .cancel) {}
@@ -38,18 +42,20 @@ struct RootView: View {
         }
     }
 
-    /// Nil when nothing is open, or when the open project was deleted.
-    private var openProject: Project? {
-        guard let id = navigation.openProjectID,
-              let project = context.registeredModel(for: id) as Project?,
-              !project.isDeleted
-        else { return nil }
-        return project
+    private func signOutMessage(_ plan: ConnectionFlowModel.SignOutPlan) -> String {
+        let account = plan.login.isEmpty ? "this account" : "@\(plan.login)"
+        guard !plan.projects.isEmpty else {
+            return "DotFolio forgets \(account). No projects came from it."
+        }
+        let values = plan.projects.flatMap(\.allVariables).filter(\.hasValue).count
+        let names = plan.projects.prefix(3).map(\.name).joined(separator: ", ") + (plan.projects.count > 3 ? "…" : "")
+        var text = "The \(plan.projects.count) projects imported from \(account) (\(names)) are deleted"
+        text += values > 0 ? ", along with \(values) stored values in your Keychain." : "."
+        return text + " Projects you created by hand are kept. This can’t be undone."
     }
 
     private func eraseAll() {
         let bundleID = DotFolioApp.bundleID
-        navigation.goHome()
         flow.cancel()
         do {
             try DataEraser.eraseAll(context: context, secretStores: [

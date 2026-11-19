@@ -60,6 +60,20 @@ struct HomeView: View {
 
 // MARK: - Shared pieces
 
+/// GitHub/GitLab mark or a folder, sized for toolbar labels and rows.
+struct ProviderIcon: View {
+    let provider: RepoProvider
+
+    var body: some View {
+        switch provider {
+        case .github: BrandMark.github.image.resizable().scaledToFit().frame(width: 15, height: 15)
+        case .gitlab: BrandMark.gitlab.image.resizable().scaledToFit().frame(width: 15, height: 15)
+        case .none: Image(systemName: "folder")
+        }
+    }
+}
+
+
 /// App mark used on onboarding. Placeholder until a real app icon exists.
 struct AppMark: View {
     var size: CGFloat = 36
@@ -72,6 +86,7 @@ struct AppMark: View {
                 Image(systemName: "lock.doc.fill")
                     .font(.system(size: size * 0.48, weight: .medium))
                     .foregroundStyle(.white)
+                    .symbolMotion(.bounce, onAppear: true)
             }
             .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
             .accessibilityHidden(true)

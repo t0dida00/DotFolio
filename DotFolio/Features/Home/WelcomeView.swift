@@ -49,9 +49,9 @@ struct WelcomeView: View {
                 .padding(.top, 14)
 
                 HStack(alignment: .top, spacing: 28) {
-                    Promise(symbol: "eye", title: "Read-only repos", detail: "Never pushes or writes to your repos.")
-                    Promise(symbol: "key.horizontal", title: "Secrets stay on this Mac", detail: "Stored in Keychain, never in the database.")
-                    Promise(symbol: "touchid", title: "Touch ID", detail: "Locks itself when you step away.")
+                    Promise(symbol: "eye", motion: .bounce, title: "Read-only repos", detail: "Never pushes or writes to your repos.")
+                    Promise(symbol: "key.horizontal", motion: .wiggle, title: "Secrets stay on this Mac", detail: "Stored in Keychain, never in the database.")
+                    Promise(symbol: "touchid", motion: .pulse, title: "Touch ID", detail: "Locks itself when you step away.")
                 }
                 .frame(maxWidth: 640)
                 .padding(.top, 44)
@@ -68,6 +68,7 @@ struct WelcomeView: View {
 
 private struct Promise: View {
     let symbol: String
+    let motion: SymbolMotion
     let title: String
     let detail: String
 
@@ -78,6 +79,7 @@ private struct Promise: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 40, height: 40)
                 .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .symbolMotion(motion, onAppear: true)
             Text(title).fontWeight(.semibold)
             Text(detail)
                 .font(.callout)

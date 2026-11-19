@@ -58,6 +58,7 @@ struct NewProjectForm: View {
                     .contentShape(.circle)
             }
             .buttonStyle(.plain)
+            .symbolMotion(.wiggleBackward)
             .glassEffect(.regular.interactive(), in: .circle)
             .clickableCursor()
             .help("Back to projects")
@@ -164,8 +165,10 @@ struct NewProjectForm: View {
                             toggleReveal(row.id)
                         } label: {
                             Image(systemName: row.isRevealed ? "eye.slash" : "eye")
+                                .contentTransition(.symbolEffect(.replace))
                         }
                         .buttonStyle(.plain)
+                        .symbolMotion(.bounce)
                         .foregroundStyle(.secondary)
                         .clickableCursor()
                         .help(row.isRevealed ? "Hide value" : "Show value")
@@ -201,9 +204,11 @@ struct NewProjectForm: View {
 
             HStack(spacing: 0) {
                 Button(action: addRow) { Image(systemName: "plus").frame(width: 24, height: 20) }
+                    .symbolMotion(.bounce)
                     .help("Add variable")
                     .accessibilityLabel("Add variable")
                 Button(action: deleteSelected) { Image(systemName: "minus").frame(width: 24, height: 20) }
+                    .symbolMotion(.bounce)
                     .disabled(selection.isEmpty)
                     .help("Remove selected")
                     .accessibilityLabel("Remove selected")

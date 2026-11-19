@@ -64,6 +64,7 @@ struct ProjectPreview: View {
                 Image(systemName: "trash")
                     .foregroundStyle(.red)
             }
+                .symbolMotion(.wiggle)
                 .buttonStyle(.bordered)
                 .tint(.red)
                 .controlSize(.large)
@@ -124,6 +125,10 @@ struct ProjectPreview: View {
     private var envSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
+                if let environment {
+                    ExportMenu(project: project, environment: environment)
+                        .id(environment.id)
+                }
                 Spacer()
                 Picker("Environment", selection: Binding(get: { environment?.id }, set: { environmentID = $0 })) {
                     ForEach(environments) { env in

@@ -11,9 +11,9 @@ import Foundation
 /// - Callback URL / Webhook: not needed (uncheck "Active" under Webhook)
 enum GitHubConfig {
     /// "Client ID" on the App's settings page, e.g. "Iv23li…".
-    static let clientID = ""
+    static let clientID = "Iv23liJDNl3uU08eMptg"
     /// The App's URL name (github.com/apps/<slug>), used for "Install on GitHub".
-    static let appSlug = ""
+    static let appSlug = "dotfolio-khoa"
 
     static var installURL: URL? {
         appSlug.isEmpty ? nil : URL(string: "https://github.com/apps/\(appSlug)/installations/new")

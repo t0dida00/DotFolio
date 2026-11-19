@@ -33,7 +33,7 @@ public enum RepoImporter {
     /// example values are placeholders, never treated as secrets to store.
     @MainActor
     @discardableResult
-    public static func importRepo(_ repo: RepoInfo, envExample: String?, envExampleSHA: String?, context: ModelContext) -> Project {
+    public static func importRepo(_ repo: RepoInfo, envExample: String?, envExampleSHA: String?, source: String? = nil, context: ModelContext) -> Project {
         let project = existingProject(for: repo.fullName, provider: repo.provider, context: context)
             ?? Project.create(name: repo.fullName.split(separator: "/").last.map(String.init) ?? repo.fullName,
                               summary: repo.description ?? "", link: repo.url, in: context)
@@ -41,6 +41,7 @@ public enum RepoImporter {
         project.repoFullName = repo.fullName
         project.repoURL = repo.url
         project.defaultBranch = repo.defaultBranch
+        if let source { project.importedFrom = source }
 
         if let envExample {
             let entries = EnvParser.parse(envExample)

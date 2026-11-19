@@ -119,6 +119,9 @@ public final class Project {
     public var updatedAt: Date = Date.now
     /// Drives the "Recent" section on the home screen.
     public var lastOpenedAt: Date?
+    /// Account this project was imported from, e.g. "github:octocat".
+    /// Nil for projects created by hand. Signing out removes these projects.
+    public var importedFrom: String?
 
     @Relationship(deleteRule: .cascade, inverse: \ProjectEnvironment.project)
     public var environments: [ProjectEnvironment]? = []

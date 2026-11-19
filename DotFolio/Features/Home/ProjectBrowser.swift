@@ -10,9 +10,16 @@ import SwiftUI
 /// and the selected project's details with its .env table (75%).
 struct ProjectBrowser: View {
     @Environment(\.modelContext) private var context
-    @Environment(AppNavigation.self) private var navigation
     @Environment(\.secretStore) private var secrets
     @Query private var projects: [Project]
+    @Query private var accounts: [Account]
+
+    /// Left column shows projects or service accounts.
+    enum Mode: String, CaseIterable { case projects = "Projects", accounts = "Accounts" }
+    @State private var mode: Mode = .projects
+    @State private var accountSelection: PersistentIdentifier?
+    @State private var isCreatingAccount = false
+    @State private var accountPendingDeletion: Account?
 
     let flow: ConnectionFlowModel
     @Binding var showNewProject: Bool
@@ -24,7 +31,10 @@ struct ProjectBrowser: View {
     /// Projects open as tabs above the detail column, in opening order.
     /// `selection` is the active tab.
     @State private var openTabs: [PersistentIdentifier] = []
-    @State private var projectPendingDeletion: Project?
+    /// Rows highlighted in the list. ⌘-click / ⇧-click / ⌘A select several
+    /// for bulk delete; a single selected row becomes the active tab.
+    @State private var listSelection: Set<PersistentIdentifier> = []
+    @State private var projectsPendingDeletion: [Project] = []
     @State private var deleteError: String?
     @FocusState private var searchFocused: Bool
 
@@ -37,18 +47,41 @@ struct ProjectBrowser: View {
             GeometryReader { proxy in
                 HStack(spacing: 0) {
                     VStack(spacing: 0) {
-                        projectList
-                            .frame(maxHeight: .infinity)
-                        listFooter
+                        Picker("Show", selection: $mode) {
+                            ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .clickableCursor()
+
+                        switch mode {
+                        case .projects:
+                            projectList
+                                .frame(maxHeight: .infinity)
+                            listFooter
+                        case .accounts:
+                            AccountList(accounts: accounts, query: query, selection: $accountSelection,
+                                        onDelete: { accountPendingDeletion = $0 })
+                                .frame(maxHeight: .infinity)
+                            accountsFooter
+                        }
                     }
                     .frame(width: proxy.size.width * 0.25)
                     Divider()
                     VStack(spacing: 0) {
-                        if !openTabs.isEmpty {
-                            tabBar
+                        switch mode {
+                        case .projects:
+                            if !openTabs.isEmpty {
+                                tabBar
+                            }
+                            detail
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        case .accounts:
+                            accountDetail
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
-                        detail
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
             }
@@ -60,19 +93,44 @@ struct ProjectBrowser: View {
         }
         .onChange(of: selection) { _, id in
             if let id, !openTabs.contains(id) { openTabs.append(id) }
+            selectedProject?.lastOpenedAt = .now
+            // Keep the list highlight on the active tab, unless several rows
+            // are selected for a bulk action.
+            if listSelection.count <= 1 { listSelection = id.map { [$0] } ?? [] }
+        }
+        .onChange(of: listSelection) { _, ids in
+            if ids.count == 1, let id = ids.first, id != selection { selection = id }
         }
         .confirmationDialog(
-            "Delete “\(projectPendingDeletion?.name ?? "")”?",
-            isPresented: Binding(get: { projectPendingDeletion != nil }, set: { if !$0 { projectPendingDeletion = nil } })
+            deletionTitle,
+            isPresented: Binding(get: { !projectsPendingDeletion.isEmpty }, set: { if !$0 { projectsPendingDeletion = [] } })
         ) {
-            Button("Delete Project", role: .destructive) {
-                if let project = projectPendingDeletion { delete(project) }
-                projectPendingDeletion = nil
+            Button(projectsPendingDeletion.count == 1 ? "Delete Project" : "Delete \(projectsPendingDeletion.count) Projects", role: .destructive) {
+                delete(projectsPendingDeletion)
+                projectsPendingDeletion = []
             }
         } message: {
             Text(deletionMessage)
         }
-        .alert("Couldn’t delete project", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+        .onChange(of: accountSelection) { _, _ in isCreatingAccount = false }
+        .confirmationDialog(
+            "Delete “\(accountPendingDeletion?.login ?? "")”?",
+            isPresented: Binding(get: { accountPendingDeletion != nil }, set: { if !$0 { accountPendingDeletion = nil } })
+        ) {
+            Button("Delete Account", role: .destructive) {
+                if let account = accountPendingDeletion {
+                    if accountSelection == account.persistentModelID { accountSelection = nil }
+                    AccountEditor.delete(account, context: context)
+                }
+                accountPendingDeletion = nil
+            }
+        } message: {
+            let used = accountPendingDeletion?.allLinkedVariables.count ?? 0
+            Text(used == 0
+                 ? "Its service projects are deleted too. This can’t be undone."
+                 : "\(used) \(used == 1 ? "variable keeps" : "variables keep") existing but lose this source link. Its service projects are deleted too. This can’t be undone.")
+        }
+        .alert("Couldn’t delete all projects", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(deleteError ?? "")
@@ -103,6 +161,7 @@ struct ProjectBrowser: View {
             .fixedSize()
             .glassEffect(.regular.interactive(), in: .capsule)
             .clickableCursor()
+            .symbolMotion(.bounce)
             .help("Sort projects")
 
             Spacer(minLength: 16)
@@ -137,6 +196,7 @@ struct ProjectBrowser: View {
             .keyboardShortcut("n")
             .help("New Project (⌘N)")
             .clickableCursor()
+            .symbolMotion(.bounce)
 
             if !gitHubUser.isEmpty {
                 Divider()
@@ -148,11 +208,12 @@ struct ProjectBrowser: View {
                     Menu {
                         Button("Import Repositories…", action: flow.connectGitHub)
                         Divider()
-                        Button("Sign Out of GitHub", role: .destructive, action: flow.signOutGitHub)
+                        Button("Sign Out of GitHub…", role: .destructive, action: flow.requestSignOutGitHub)
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
                     .menuStyle(.button)
+                    .symbolMotion(.bounce)
                     .buttonStyle(.borderless)
                     .menuIndicator(.hidden)
                     .fixedSize()
@@ -164,6 +225,7 @@ struct ProjectBrowser: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                .symbolMotion(.bounceDown)
                 .buttonBorderShape(.capsule)
                 .clickableCursor()
             }
@@ -201,6 +263,53 @@ struct ProjectBrowser: View {
         .overlay(alignment: .top) { Divider() }
     }
 
+    // MARK: Accounts mode
+
+    private var accountsFooter: some View {
+        Button {
+            accountSelection = nil
+            isCreatingAccount = true
+        } label: {
+            Label("New Account", systemImage: "plus").frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .buttonBorderShape(.capsule)
+        .clickableCursor()
+        .padding(12)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+
+    @ViewBuilder
+    private var accountDetail: some View {
+        if isCreatingAccount {
+            NewAccountForm(
+                onCreated: { account in
+                    isCreatingAccount = false
+                    accountSelection = account.persistentModelID
+                },
+                onCancel: { isCreatingAccount = false }
+            )
+        } else if let id = accountSelection, let account = accounts.first(where: { $0.persistentModelID == id }) {
+            AccountDetailView(
+                account: account,
+                onOpenProject: { project in
+                    mode = .projects
+                    selection = project.persistentModelID
+                },
+                onDelete: { accountPendingDeletion = account }
+            )
+            .id(account.persistentModelID)
+        } else {
+            ContentUnavailableView(
+                accounts.isEmpty ? "No accounts yet" : "No account selected",
+                systemImage: "person.crop.circle",
+                description: Text("Accounts are the service logins your variables come from — which Firebase, Stripe or AWS login a project uses.")
+            )
+        }
+    }
+
     // MARK: Left column (25%)
 
     private var results: [(project: Project, match: ProjectSearch.Match)] {
@@ -219,7 +328,7 @@ struct ProjectBrowser: View {
         if isSearching && rows.isEmpty {
             ContentUnavailableView.search(text: query)
         } else {
-            List(selection: $selection) {
+            List(selection: $listSelection) {
                 ForEach(rows, id: \.project.id) { row in
                     ProjectListRow(project: row.project, match: row.match)
                         .tag(row.project.persistentModelID)
@@ -227,18 +336,20 @@ struct ProjectBrowser: View {
             }
             .listStyle(.inset)
             .scrollContentBackground(.hidden)
-            // Right-click menu; double-click / Return opens (primaryAction).
+            // Right-click menu. A click opens the project as a tab.
             .contextMenu(forSelectionType: PersistentIdentifier.self) { ids in
-                if let project = project(for: ids) {
-                    Button("Open") { open(project) }
+                let picked = projects(for: ids)
+                if picked.count == 1, let project = picked.first {
+                    Button("Delete Project…", role: .destructive) { projectsPendingDeletion = [project] }
+                } else if picked.count > 1 {
+                    Button("Open \(picked.count) in Tabs") { openInTabs(picked) }
                     Divider()
-                    Button("Delete Project…", role: .destructive) { projectPendingDeletion = project }
+                    Button("Delete \(picked.count) Projects…", role: .destructive) { projectsPendingDeletion = picked }
                 }
-            } primaryAction: { ids in
-                if let project = project(for: ids) { open(project) }
             }
             .onDeleteCommand {
-                if let project = selectedProject { projectPendingDeletion = project }
+                let picked = projects(for: listSelection)
+                if !picked.isEmpty { projectsPendingDeletion = picked }
             }
         }
     }
@@ -246,10 +357,10 @@ struct ProjectBrowser: View {
     // MARK: Right column (75%)
 
     /// Safari-style tab bar: equal-width tabs in one capsule track, the
-    /// active tab raised as a white pill, and + beside it for a new project.
+    /// active tab raised as a white pill.
     private var tabBar: some View {
         let tabs = openTabs.compactMap { id in projects.first { $0.persistentModelID == id } }
-        return HStack(spacing: 8) {
+        return HStack(spacing: 0) {
             HStack(spacing: 0) {
                 ForEach(Array(tabs.enumerated()), id: \.element.persistentModelID) { index, project in
                     let id = project.persistentModelID
@@ -267,23 +378,24 @@ struct ProjectBrowser: View {
                         onSelect: { selection = id },
                         onClose: { closeTab(id) }
                     )
+                    .contextMenu {
+                        Button("Close Tab") { closeTab(id) }
+                        Button("Close Other Tabs") { closeOtherTabs(keeping: id) }
+                            .disabled(tabs.count < 2)
+                        Button("Close Tabs to the Right") { closeTabs(rightOf: id) }
+                            .disabled(index == tabs.count - 1)
+                        Divider()
+                        Button("Close All Tabs") { closeAllTabs() }
+                    }
                 }
             }
             .padding(2)
             .background(.quaternary.opacity(0.8), in: .capsule)
 
-            Button { showNewProject = true } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 28, height: 28)
-                    .contentShape(.circle)
+            if tabs.count == 1 {
+                // Takes the other half, so a lone tab is at most 50% wide.
+                Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .background(.quaternary.opacity(0.8), in: .circle)
-            .help("New Project (⌘N)")
-            .accessibilityLabel("New Project")
-            .clickableCursor()
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)
@@ -301,7 +413,7 @@ struct ProjectBrowser: View {
         if let project = selectedProject {
             ProjectPreview(
                 project: project,
-                onDelete: { projectPendingDeletion = project }
+                onDelete: { projectsPendingDeletion = [project] }
             )
             .id(project.persistentModelID)
         } else {
@@ -315,9 +427,17 @@ struct ProjectBrowser: View {
 
     // MARK: Actions
 
-    private func project(for ids: Set<PersistentIdentifier>) -> Project? {
-        guard let id = ids.first else { return nil }
-        return projects.first { $0.persistentModelID == id }
+    /// In list order, so the dialog and tabs follow what the user sees.
+    private func projects(for ids: Set<PersistentIdentifier>) -> [Project] {
+        results.map(\.project).filter { ids.contains($0.persistentModelID) }
+    }
+
+    private func openInTabs(_ picked: [Project]) {
+        for project in picked where !openTabs.contains(project.persistentModelID) {
+            openTabs.append(project.persistentModelID)
+        }
+        selection = picked.first?.persistentModelID
+        listSelection = selection.map { [$0] } ?? []
     }
 
     /// Closes a tab; when it was active, the tab to its right (or left)
@@ -328,6 +448,23 @@ struct ProjectBrowser: View {
         if selection == id {
             selection = openTabs.isEmpty ? nil : openTabs[min(index, openTabs.count - 1)]
         }
+    }
+
+    private func closeOtherTabs(keeping id: PersistentIdentifier) {
+        openTabs = [id]
+        selection = id
+    }
+
+    /// Keeps the active tab if it survives; otherwise activates `id`.
+    private func closeTabs(rightOf id: PersistentIdentifier) {
+        guard let index = openTabs.firstIndex(of: id) else { return }
+        openTabs.removeSubrange((index + 1)...)
+        if let selection, !openTabs.contains(selection) { self.selection = id }
+    }
+
+    private func closeAllTabs() {
+        openTabs = []
+        selection = nil
     }
 
     /// Drops tabs whose project no longer exists.
@@ -342,29 +479,40 @@ struct ProjectBrowser: View {
         }
     }
 
-    private func open(_ project: Project) {
-        project.lastOpenedAt = .now
-        navigation.open(project.persistentModelID)
+    private var deletionTitle: String {
+        let picked = projectsPendingDeletion
+        return picked.count == 1 ? "Delete “\(picked[0].name)”?" : "Delete \(picked.count) projects?"
     }
 
     private var deletionMessage: String {
-        let stored = projectPendingDeletion?.allVariables.filter(\.hasValue).count ?? 0
+        let picked = projectsPendingDeletion
+        let stored = picked.reduce(0) { $0 + $1.allVariables.filter(\.hasValue).count }
         let values = stored == 0 ? "" : " \(stored) stored \(stored == 1 ? "value is" : "values are") removed from your Keychain."
-        return "Its environments and variables are deleted.\(values) This can’t be undone."
+        let names = picked.count > 1 ? picked.prefix(5).map(\.name).joined(separator: ", ") + (picked.count > 5 ? " and \(picked.count - 5) more" : "") + ". " : ""
+        let subject = picked.count == 1 ? "Its" : "Their"
+        return "\(names)\(subject) environments and variables are deleted.\(values) This can’t be undone."
     }
 
     /// SECURITY: goes through ProjectDeleter so Keychain items are removed
-    /// first and never left behind.
-    private func delete(_ project: Project) {
-        closeTab(project.persistentModelID)
-        do {
-            try ProjectDeleter.delete(project, context: context, secrets: secrets)
-        } catch ProjectDeleter.Failure.keychain(let error) {
-            let detail = (error as? KeychainError)?.userMessage ?? error.localizedDescription
-            deleteError = "Stored values couldn’t be removed from the Keychain, so the project was kept. \(detail)"
-        } catch {
-            deleteError = error.localizedDescription
+    /// first and never left behind. Each project is deleted on its own: one
+    /// that fails is kept (with its Keychain items) and the rest still go.
+    private func delete(_ picked: [Project]) {
+        var failures: [String] = []
+        for project in picked {
+            let id = project.persistentModelID
+            let name = project.name
+            do {
+                try ProjectDeleter.delete(project, context: context, secrets: secrets)
+                closeTab(id)
+                listSelection.remove(id)
+            } catch ProjectDeleter.Failure.keychain(let error) {
+                let detail = (error as? KeychainError)?.userMessage ?? error.localizedDescription
+                failures.append("“\(name)” was kept: stored values couldn’t be removed from the Keychain. \(detail)")
+            } catch {
+                failures.append("“\(name)”: \(error.localizedDescription)")
+            }
         }
+        if !failures.isEmpty { deleteError = failures.joined(separator: "\n") }
     }
 }
 
@@ -398,6 +546,7 @@ private struct ProjectTab: View {
                     .foregroundStyle(.secondary)
                     .padding(.leading, 8)
                     .help("Close Tab (⌘W)")
+                    .symbolMotion(.bounce)
                     .accessibilityLabel("Close \(title)")
                     .clickableCursor()
                 }

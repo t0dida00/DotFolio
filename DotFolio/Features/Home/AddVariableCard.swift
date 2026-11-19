@@ -24,6 +24,7 @@ struct AddVariableCard: View {
             HStack {
                 Label("Add variable", systemImage: "plus.circle")
                     .font(.callout.weight(.semibold))
+                    .symbolMotion(.bounce)
                 Spacer()
                 Text("to \(environment.name)")
                     .font(.callout)
@@ -64,6 +65,7 @@ struct AddVariableCard: View {
                     Label("Add Variable", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
+                .symbolMotion(.bounce)
                 .buttonBorderShape(.capsule)
                 .keyboardShortcut(.defaultAction)
                 .disabled(newKey.trimmingCharacters(in: .whitespaces).isEmpty)

@@ -132,6 +132,7 @@ struct EnvEditor: View {
                     }
                     if let url = v.sourceURL {
                         Link(destination: url) { Image(systemName: "arrow.up.forward.square") }
+                            .symbolMotion(.bounceUp)
                             .help("Open \(url.absoluteString)")
                             .clickableCursor()
                     }
@@ -193,14 +194,17 @@ struct EnvEditor: View {
                 if revealed[v.id] != nil { revealed[v.id] = nil } else { reveal(v) }
             } label: {
                 Image(systemName: revealed[v.id] != nil ? "eye.slash" : "eye")
+                    .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(.borderless)
+            .symbolMotion(.bounce)
             .disabled(!v.hasValue)
             .help(revealed[v.id] != nil ? "Hide value" : "Reveal value (Touch ID)")
             .clickableCursor()
 
             Button { copy(v) } label: { Image(systemName: "doc.on.doc") }
                 .buttonStyle(.borderless)
+                .symbolMotion(.bounce)
                 .disabled(!v.hasValue)
                 .help("Copy value (Touch ID). The clipboard clears after 60 seconds.")
                 .clickableCursor()
@@ -212,11 +216,13 @@ struct EnvEditor: View {
     private var footer: some View {
         HStack(spacing: 0) {
             Button(action: onAdd) { Image(systemName: "plus").frame(width: 24, height: 20) }
+                .symbolMotion(.bounce)
                 .help("Add variable")
                 .accessibilityLabel("Add variable")
             Button {
                 pendingDeletion = variables.filter { selection.contains($0.id) }
             } label: { Image(systemName: "minus").frame(width: 24, height: 20) }
+                .symbolMotion(.bounce)
                 .disabled(selection.isEmpty)
                 .help("Delete selected")
                 .accessibilityLabel("Delete selected variables")
@@ -258,6 +264,7 @@ struct EnvEditor: View {
             Label("Copy to", systemImage: "square.on.square")
         }
         .menuStyle(.button)
+        .symbolMotion(.bounce)
         .fixedSize()
         .disabled(variables.isEmpty || otherEnvironments.isEmpty)
         .help("Copy these variables to another environment. Existing names there are skipped, never overwritten.")
@@ -373,6 +380,7 @@ private struct SuggestionMenu: View {
                 .foregroundStyle(.secondary)
         }
         .menuStyle(.button)
+        .symbolMotion(.bounceDown)
         .buttonStyle(.borderless)
         .menuIndicator(.hidden)
         .fixedSize()

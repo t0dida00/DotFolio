@@ -20,7 +20,24 @@ final class ConnectionFlowModel {
         case connected(ConnectedAccount)
         case choosingRepos
         case importing(done: Int, total: Int)
+        case importFinished(ImportSummary)
         case failed(Failure)
+    }
+
+    /// One line of the import log.
+    struct ImportLogEntry: Identifiable, Equatable {
+        enum Outcome: Equatable { case keys(Int), noEnvExample, unreadable }
+        let id = UUID()
+        let repo: String
+        let outcome: Outcome
+    }
+
+    struct ImportSummary: Equatable {
+        var projects = 0
+        var withEnvExample = 0
+        var variables = 0
+        var unreadable = 0
+        var cancelled = false
     }
 
     /// GitHub device flow code shown to the user (not a secret: it is useless
@@ -88,9 +105,25 @@ final class ConnectionFlowModel {
     var selectedRepoIDs: Set<GitHubRepo.ID> = []
     var repoFilter = ""
 
+    // Import progress (shown live on the importing screen)
+    private(set) var importLog: [ImportLogEntry] = []
+    private(set) var inFlight: [String] = []
+    private(set) var importStats = ImportSummary()
+    private static let parallelImports = 4
+
     private let client = GitHubClient(clientID: GitHubConfig.clientID)
     private var context: ModelContext?
     private var tokens: (any SecretStore)?
+    private var secrets: (any SecretStore)?
+
+    /// What signing out would delete; the root view asks to confirm.
+    struct SignOutPlan: Identifiable {
+        let id = UUID()
+        let login: String
+        let projects: [Project]
+    }
+    var pendingSignOut: SignOutPlan?
+    private(set) var isPreparingSignOut = false
     private var task: Task<Void, Never>?
     private static let tokenRef = "github"
 
@@ -99,12 +132,18 @@ final class ConnectionFlowModel {
     }
 
     /// Called once by the root view with the app's store and Keychain.
-    func configure(context: ModelContext, tokens: any SecretStore) {
+    func configure(context: ModelContext, tokens: any SecretStore, secrets: any SecretStore) {
         self.context = context
         self.tokens = tokens
+        self.secrets = secrets
     }
 
-    var isWideStep: Bool { step == .choosingRepos }
+    var isWideStep: Bool {
+        switch step {
+        case .choosingRepos, .importing, .importFinished: true
+        default: false
+        }
+    }
 
     // MARK: GitHub
 
@@ -180,8 +219,38 @@ final class ConnectionFlowModel {
         }
     }
 
-    func signOutGitHub() {
+    /// Works out which projects belong to the signed-in account (asking
+    /// GitHub for its repo list while the token still works), then asks the
+    /// user to confirm before anything is deleted.
+    func requestSignOutGitHub() {
+        guard let context, !isPreparingSignOut else { return }
+        let login = account?.login ?? UserDefaults.standard.string(forKey: RepoConnections.gitHubUserKey) ?? ""
+        isPreparingSignOut = true
+        Task {
+            var names = Set(repos.map(\.fullName))
+            if names.isEmpty, let token = storedToken() {
+                names = Set(((try? await client.repositories(token: token)) ?? []).map(\.fullName))
+            }
+            let projects = login.isEmpty ? [] : AccountSignOut.projects(provider: .github, login: login, repoFullNames: names, context: context)
+            isPreparingSignOut = false
+            pendingSignOut = SignOutPlan(login: login, projects: projects)
+        }
+    }
+
+    /// Deletes the account's projects (Keychain values first), then the token.
+    func confirmSignOut() {
+        guard let plan = pendingSignOut, let context, let secrets else { return }
+        pendingSignOut = nil
         task?.cancel()
+        do {
+            try AccountSignOut.deleteProjects(plan.projects, context: context, secrets: secrets)
+            try context.save()
+        } catch {
+            // Keep the token too: the account's projects still exist, and the
+            // user can retry signing out.
+            step = .failed(.other("Some stored values couldn’t be removed from the Keychain, so sign-out stopped. \((error as? KeychainError)?.userMessage ?? error.localizedDescription)"))
+            return
+        }
         forgetGitHub()
         step = .idle
     }
@@ -210,27 +279,85 @@ final class ConnectionFlowModel {
         return RepoImporter.existingProject(for: repo.fullName, provider: .github, context: context) != nil
     }
 
+    /// Imports the picked repos, reading up to `parallelImports` .env.example
+    /// files at a time. Projects imported before a cancel are kept.
     func importSelected() {
         guard let context, let token = storedToken() else { return }
-        let picked = repos.filter { selectedRepoIDs.contains($0.id) }
-        guard !picked.isEmpty else { return }
+        var pending = ArraySlice(repos.filter { selectedRepoIDs.contains($0.id) })
+        let total = pending.count
+        guard total > 0 else { return }
+
+        importLog = []
+        inFlight = []
+        importStats = ImportSummary()
+        step = .importing(done: 0, total: total)
+        let client = client
+        let source = (account?.login).map { AccountSignOut.source(provider: .github, login: $0) }
+
         task?.cancel()
         task = Task {
-            for (index, repo) in picked.enumerated() {
-                if Task.isCancelled { return }
-                step = .importing(done: index, total: picked.count)
-                // A missing or unreadable .env.example still imports the repo.
-                let file = try? await client.file(".env.example", in: repo.fullName, ref: repo.defaultBranch, token: token)
-                RepoImporter.importRepo(
-                    .init(provider: .github, fullName: repo.fullName, url: repo.htmlUrl,
-                          defaultBranch: repo.defaultBranch, description: repo.description),
-                    envExample: file?.text, envExampleSHA: file?.sha, context: context
-                )
+            await withTaskGroup(of: (GitHubRepo, GitHubFile?, Bool).self) { group in
+                // Child tasks only fetch; all model updates happen back here on the main actor.
+                let fetch: @Sendable (GitHubRepo) async -> (GitHubRepo, GitHubFile?, Bool) = { repo in
+                    do {
+                        let file = try await client.file(".env.example", in: repo.fullName, ref: repo.defaultBranch, token: token)
+                        return (repo, file, false)
+                    } catch {
+                        return (repo, nil, true)
+                    }
+                }
+                for _ in 0..<min(Self.parallelImports, pending.count) {
+                    let repo = pending.removeFirst()
+                    inFlight.append(repo.fullName)
+                    group.addTask { await fetch(repo) }
+                }
+
+                var done = 0
+                while let (repo, file, unreadable) = await group.next() {
+                    if Task.isCancelled { group.cancelAll(); break }
+                    inFlight.removeAll { $0 == repo.fullName }
+                    let project = RepoImporter.importRepo(
+                        .init(provider: .github, fullName: repo.fullName, url: repo.htmlUrl,
+                              defaultBranch: repo.defaultBranch, description: repo.description),
+                        envExample: file?.text, envExampleSHA: file?.sha, source: source, context: context
+                    )
+                    let keys = file == nil ? 0 : project.envExampleKeys.count
+                    importStats.projects += 1
+                    if unreadable {
+                        importStats.unreadable += 1
+                        importLog.append(.init(repo: repo.fullName, outcome: .unreadable))
+                    } else if file == nil {
+                        importLog.append(.init(repo: repo.fullName, outcome: .noEnvExample))
+                    } else {
+                        importStats.withEnvExample += 1
+                        importStats.variables += keys
+                        importLog.append(.init(repo: repo.fullName, outcome: .keys(keys)))
+                    }
+                    done += 1
+                    step = .importing(done: done, total: total)
+                    if !pending.isEmpty {
+                        let next = pending.removeFirst()
+                        inFlight.append(next.fullName)
+                        group.addTask { await fetch(next) }
+                    }
+                }
             }
             try? context.save()
             selectedRepoIDs = []
-            step = .idle
+            inFlight = []
+            importStats.cancelled = Task.isCancelled
+            if !Task.isCancelled { step = .importFinished(importStats) }
         }
+    }
+
+    /// Stop importing but keep what was imported, and show the summary.
+    func stopImport() {
+        task?.cancel()
+        try? context?.save()
+        inFlight = []
+        var summary = importStats
+        summary.cancelled = true
+        step = .importFinished(summary)
     }
 
     // MARK: GitLab (not wired yet)
