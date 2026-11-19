@@ -31,10 +31,21 @@ extension Variable {
 
     public var project: Project? { environment?.project }
 
-    /// What the Service column shows: the typed label, else the account's service.
+    /// What the Service column shows: the chosen category, else one guessed
+    /// from the provider ("Redis" → Cache), else "".
+    public var displayCategory: String {
+        if !serviceCategory.isEmpty { return serviceCategory }
+        return ServiceCategory.suggested(forProvider: displayService)?.displayName ?? ""
+    }
+
+    /// What the Provider column shows: the typed provider, else the
+    /// service project's / single-service account's provider.
     public var displayService: String {
         if !serviceLabel.isEmpty { return serviceLabel }
-        return account?.serviceName ?? ""
+        if let sp = serviceProject, !sp.serviceName.isEmpty { return sp.serviceName }
+        // Only unambiguous when the account has a single service.
+        if let services = account?.services, services.count == 1 { return services[0] }
+        return ""
     }
 }
 

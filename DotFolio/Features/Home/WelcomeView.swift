@@ -27,10 +27,12 @@ struct WelcomeView: View {
                     }
                     .buttonStyle(.borderedProminent)
 
-                    Button(action: flow.connectGitLab) {
-                        ProviderLabel(brand: .gitlab, title: "Continue with GitLab")
+                    if FeatureFlags.gitLab {
+                        Button(action: flow.connectGitLab) {
+                            ProviderLabel(brand: .gitlab, title: "Continue with GitLab")
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
                 }
                 .controlSize(.extraLarge)
                 .buttonBorderShape(.capsule)
@@ -41,8 +43,10 @@ struct WelcomeView: View {
                 HStack(spacing: 10) {
                     Button("Add project manually") { showNewProject = true }
                         .keyboardShortcut("n")
-                    Text("·").foregroundStyle(.tertiary).accessibilityHidden(true)
-                    Button("Use self-hosted GitLab", action: flow.showGitLabHost)
+                    if FeatureFlags.gitLab {
+                        Text("·").foregroundStyle(.tertiary).accessibilityHidden(true)
+                        Button("Use self-hosted GitLab", action: flow.showGitLabHost)
+                    }
                 }
                 .buttonStyle(.link)
                 .clickableCursor()
@@ -78,7 +82,7 @@ private struct Promise: View {
                 .font(.system(size: 17))
                 .foregroundStyle(.secondary)
                 .frame(width: 40, height: 40)
-                .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
                 .symbolMotion(motion, onAppear: true)
             Text(title).fontWeight(.semibold)
             Text(detail)

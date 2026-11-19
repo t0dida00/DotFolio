@@ -8,6 +8,7 @@ struct DotFolioApp: App {
     private let container: ModelContainer
     @State private var navigation = AppNavigation()
     @State private var session = SessionLock()
+    @State private var autoLock: SessionAutoLock?
 
     init() {
         do {
@@ -25,6 +26,8 @@ struct DotFolioApp: App {
                 .environment(navigation)
                 .environment(session)
                 .task {
+                    // Lock on sleep / screen lock / screensaver.
+                    if autoLock == nil { autoLock = SessionAutoLock(session: session) }
                     // Auto-lock: drop the Touch ID session after inactivity.
                     while !Task.isCancelled {
                         try? await Task.sleep(for: .seconds(15))
@@ -42,6 +45,7 @@ struct DotFolioApp: App {
             // scene yet, so an .appSettings anchor may not exist).
             CommandGroup(after: .appInfo) {
                 Divider()
+                Button("Verify Data…") { navigation.isVerifyingData = true }
                 Button("Erase All Data…") { navigation.isConfirmingErase = true }
             }
         }

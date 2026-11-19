@@ -15,6 +15,14 @@ public protocol SecretStore {
     func contains(_ ref: String) throws -> Bool
     /// Removes every item owned by this store (e.g. "erase all data").
     func deleteAll() throws
+    /// References of every item this store owns. Reads attributes only —
+    /// never values — so it needs no authentication.
+    func allRefs() throws -> [String]
+}
+
+extension SecretStore {
+    /// Stores that can't enumerate (test doubles) report nothing.
+    public func allRefs() throws -> [String] { [] }
 }
 
 extension SecretStore {
@@ -70,5 +78,9 @@ public final class InMemorySecretStore: SecretStore, @unchecked Sendable {
 
     public func deleteAll() throws {
         lock.withLock { storage.removeAll() }
+    }
+
+    public func allRefs() throws -> [String] {
+        lock.withLock { Array(storage.keys) }
     }
 }

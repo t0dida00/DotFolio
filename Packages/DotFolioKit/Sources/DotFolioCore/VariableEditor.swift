@@ -30,7 +30,7 @@ public enum VariableEditor {
     @MainActor
     @discardableResult
     public static func add(
-        key rawKey: String, value: String = "", service: String = "", account: String = "", link: String = "",
+        key rawKey: String, value: String = "", category: String = "", service: String = "", account: String = "", link: String = "",
         to environment: ProjectEnvironment, context: ModelContext, secrets: any SecretStore
     ) throws(Failure) -> Variable {
         let key = try validatedKey(rawKey, in: environment, excluding: nil)
@@ -44,6 +44,7 @@ public enum VariableEditor {
         }
         variable.sourceURL = url
         variable.serviceLabel = service.trimmingCharacters(in: .whitespacesAndNewlines)
+        variable.serviceCategory = normalizedCategory(category)
         context.insert(variable)
         variable.environment = environment
         variable.account = findOrCreateAccount(login: account, service: variable.serviceLabel, context: context)
@@ -77,8 +78,25 @@ public enum VariableEditor {
         let label = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard label != variable.serviceLabel else { return }
         variable.serviceLabel = label
+        variable.account?.addService(label)
         variable.updatedAt = .now
         if let environment = variable.environment { touch(environment) }
+    }
+
+    /// Sets what the value is for ("Database", "Cache"…). Known names and
+    /// synonyms are normalized ("db" → "Database"); anything else is kept as typed.
+    @MainActor
+    public static func setCategory(_ variable: Variable, to text: String) {
+        let category = normalizedCategory(text)
+        guard category != variable.serviceCategory else { return }
+        variable.serviceCategory = category
+        variable.updatedAt = .now
+        if let environment = variable.environment { touch(environment) }
+    }
+
+    static func normalizedCategory(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return ServiceCategory(matching: trimmed)?.displayName ?? trimmed
     }
 
     /// Links the variable to the account with this login (case-insensitive),
@@ -97,27 +115,37 @@ public enum VariableEditor {
         let login = login.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !login.isEmpty else { return nil }
         let existing = (try? context.fetch(FetchDescriptor<Account>())) ?? []
+        // One login can serve several services: reuse it and remember the service.
         if let match = existing.first(where: { $0.login.caseInsensitiveCompare(login) == .orderedSame }) {
+            match.addService(service)
             return match
         }
-        let type = ServiceType(matching: service) ?? .custom
-        let account = Account(serviceType: type, login: login,
-                              customServiceName: type == .custom && !service.isEmpty ? service : nil)
+        let account = Account(login: login, services: [service])
         context.insert(account)
         return account
     }
 
     /// Replaces the value. An empty string clears it (removes the Keychain item).
-    /// Writing does not need authentication; only reading does.
+    ///
+    /// SECURITY / correctness: an existing item is never updated in place —
+    /// updating a `.userPresence` item needs Touch ID, which writing must not.
+    /// The new value goes into a NEW item; only once that succeeded does the
+    /// variable point at it and the old item get deleted (deleting needs no
+    /// authentication). If the write fails, the old value is untouched.
     @MainActor
     public static func setValue(_ variable: Variable, to value: String, secrets: any SecretStore) throws(Failure) {
+        let oldRef = variable.secretRef
+        let hadValue = variable.hasValue
         do {
             if value.isEmpty {
-                try secrets.delete(variable.secretRef.uuidString)
+                if hadValue { try secrets.delete(oldRef.uuidString) }
                 variable.hasValue = false
             } else {
-                try secrets.setString(value, for: variable.secretRef.uuidString)
+                let newRef = UUID()
+                try secrets.setString(value, for: newRef.uuidString)
+                variable.secretRef = newRef
                 variable.hasValue = true
+                if hadValue { try? secrets.delete(oldRef.uuidString) }
             }
         } catch {
             throw .keychain(error as? KeychainError ?? .unexpectedStatus(-1))

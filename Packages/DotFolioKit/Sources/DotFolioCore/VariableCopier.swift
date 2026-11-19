@@ -50,6 +50,7 @@ public enum VariableCopier {
             let copy = Variable(key: source.key, notes: source.notes, environment: nil)
             copy.sourceURL = source.sourceURL
             copy.serviceLabel = source.serviceLabel
+            copy.serviceCategory = source.serviceCategory
             if let ref = newRefs[source.id] {
                 copy.secretRef = ref
                 copy.hasValue = true

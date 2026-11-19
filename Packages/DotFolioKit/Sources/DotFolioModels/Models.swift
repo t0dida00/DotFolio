@@ -12,13 +12,19 @@ import SwiftData
 
 // MARK: - Account
 
-/// A login on an external service (e.g. the Firebase account `me@work.com`).
+/// A login (email or username) used on one or more services — e.g.
+/// `me@gmail.com` for Firebase, Google Cloud and Google Maps.
 @Model
 public final class Account {
     public var id: UUID = UUID()
+    /// Legacy single-service fields (before an account could have several
+    /// services). Only read as a fallback by `services`; new code uses
+    /// `serviceNames`.
     public var serviceTypeRaw: String = ServiceType.custom.rawValue
-    /// Only meaningful when `serviceType == .custom`.
     public var customServiceName: String?
+    /// Services this login is used for, by display name ("Firebase",
+    /// "Google Cloud", or a custom name like "Resend").
+    public var serviceNames: [String] = []
     /// Login email or username.
     public var login: String = ""
     public var displayName: String = ""
@@ -33,30 +39,61 @@ public final class Account {
     @Relationship(deleteRule: .nullify, inverse: \Variable.account)
     public var variables: [Variable]? = []
 
-    public init(
-        serviceType: ServiceType,
-        login: String,
-        displayName: String = "",
-        customServiceName: String? = nil,
-        notes: String = ""
-    ) {
-        self.serviceTypeRaw = serviceType.rawValue
+    public init(login: String, displayName: String = "", services: [String] = [], notes: String = "") {
         self.login = login
         self.displayName = displayName
-        self.customServiceName = customServiceName
         self.notes = notes
+        self.serviceNames = []
+        for service in services { addService(service) }
     }
 
+    /// Single-service convenience (kept for callers that know one service).
+    public convenience init(serviceType: ServiceType, login: String, displayName: String = "",
+                            customServiceName: String? = nil, notes: String = "") {
+        let name = serviceType == .custom ? (customServiceName ?? "") : serviceType.displayName
+        self.init(login: login, displayName: displayName, services: name.isEmpty ? [] : [name], notes: notes)
+    }
+
+    /// Services in the order they were added; falls back to the legacy field.
+    public var services: [String] {
+        if !serviceNames.isEmpty { return serviceNames }
+        if let type = ServiceType(rawValue: serviceTypeRaw), type != .custom { return [type.displayName] }
+        if let custom = customServiceName, !custom.isEmpty { return [custom] }
+        return []
+    }
+
+    /// Adds a service (known names are normalized, e.g. "firebase" → "Firebase").
+    /// Case-insensitive duplicates are ignored.
+    public func addService(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let canonical = ServiceType(matching: trimmed)?.displayName ?? trimmed
+        let current = services
+        guard !current.contains(where: { $0.caseInsensitiveCompare(canonical) == .orderedSame }) else { return }
+        serviceNames = current + [canonical]
+    }
+
+    public func removeService(_ name: String) {
+        serviceNames = services.filter { $0.caseInsensitiveCompare(name) != .orderedSame }
+        // Keep the legacy fallback from resurrecting a removed service.
+        serviceTypeRaw = ServiceType.custom.rawValue
+        customServiceName = nil
+    }
+
+    public func hasService(_ name: String) -> Bool {
+        services.contains { $0.caseInsensitiveCompare(name) == .orderedSame }
+    }
+
+    /// First known service (for icons / console URLs), else `.custom`.
     public var serviceType: ServiceType {
-        get { ServiceType(rawValue: serviceTypeRaw) ?? .custom }
-        set { serviceTypeRaw = newValue.rawValue }
+        services.lazy.compactMap { ServiceType(matching: $0) }.first ?? .custom
     }
 
-    /// "Firebase", or the custom name for `.custom` accounts.
-    public var serviceName: String {
-        if serviceType == .custom, let name = customServiceName, !name.isEmpty { return name }
-        return serviceType.displayName
-    }
+    /// First service's name ("" when none).
+    public var serviceName: String { services.first ?? "" }
+
+    /// "Firebase, Google Cloud" or "No services".
+    public var serviceSummary: String { services.isEmpty ? "No services" : services.joined(separator: ", ") }
 }
 
 // MARK: - ServiceProject
@@ -70,6 +107,8 @@ public final class ServiceProject {
     public var externalID: String = ""
     public var consoleURL: URL?
     public var notes: String = ""
+    /// Which of the account's services this project belongs to ("Firebase").
+    public var serviceName: String = ""
     public var createdAt: Date = Date.now
     public var updatedAt: Date = Date.now
 
@@ -78,8 +117,10 @@ public final class ServiceProject {
     @Relationship(deleteRule: .nullify, inverse: \Variable.serviceProject)
     public var variables: [Variable]? = []
 
-    public init(name: String, externalID: String = "", consoleURL: URL? = nil, notes: String = "", account: Account? = nil) {
+    public init(name: String, externalID: String = "", consoleURL: URL? = nil, notes: String = "",
+                serviceName: String = "", account: Account? = nil) {
         self.name = name
+        self.serviceName = serviceName
         self.externalID = externalID
         self.consoleURL = consoleURL
         self.notes = notes
@@ -88,7 +129,7 @@ public final class ServiceProject {
 
     /// Explicit console URL, falling back to the service's known URL pattern.
     public var resolvedConsoleURL: URL? {
-        consoleURL ?? account?.serviceType.defaultConsoleURL(externalID: externalID)
+        consoleURL ?? (ServiceType(matching: serviceName) ?? account?.serviceType)?.defaultConsoleURL(externalID: externalID)
     }
 }
 
@@ -192,9 +233,12 @@ public final class Variable {
     public var hasValue: Bool = false
     /// Where to get or manage this value (e.g. the provider's API keys page).
     public var sourceURL: URL?
-    /// Free-text description of the service ("DB", "Firebase", "Stripe"…).
-    /// Falls back to the linked account's service in the UI when empty.
+    /// Provider of the value ("Supabase", "Redis", "Stripe"…). Shown as
+    /// "Provider" in the UI (the stored name predates that split).
     public var serviceLabel: String = ""
+    /// What the value is for ("Database", "Cache"…), see `ServiceCategory`.
+    /// Shown as "Service" in the UI.
+    public var serviceCategory: String = ""
     public var createdAt: Date = Date.now
     public var updatedAt: Date = Date.now
 

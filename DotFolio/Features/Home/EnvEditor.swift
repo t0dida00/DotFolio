@@ -53,8 +53,7 @@ struct EnvEditor: View {
 
     /// Header + one row per variable (at least two rows, so the empty state fits).
     private var tableHeight: CGFloat {
-        let header: CGFloat = 28, row: CGFloat = 26, borders: CGFloat = 4
-        return header + row * CGFloat(max(variables.count, 2)) + borders
+        DS.Table.height(rows: variables.count, minimumRows: 2)
     }
 
     // MARK: Column widths
@@ -63,14 +62,15 @@ struct EnvEditor: View {
     /// its prompt), within limits. Columns have no maximum, so any spare width
     /// is shared out and the table always fills the panel; narrower than the
     /// minimums → the table scrolls sideways.
-    private var widths: (name: CGFloat, value: CGFloat, service: CGFloat, account: CGFloat, link: CGFloat) {
+    private var widths: (name: CGFloat, value: CGFloat, category: CGFloat, service: CGFloat, account: CGFloat, link: CGFloat) {
         let vars = variables
         let revealedWidest = revealed.values.map { TextWidth.of($0, monospaced: true) }.max() ?? 0
         return (
             name: TextWidth.fit(vars.map(\.key) + ["NAME"], monospaced: true, extra: 20, min: 80, max: 280),
             // Dots (or a revealed value) + the eye and copy buttons.
             value: min(320, max(150, revealedWidest + 70)),
-            service: TextWidth.fit(vars.map(\.displayService) + ["e.g. DB, Firebase"], extra: 38, min: 100, max: 200),
+            category: TextWidth.fit(vars.map(\.displayCategory) + ["e.g. Database"], extra: 38, min: 100, max: 160),
+            service: TextWidth.fit(vars.map(\.displayService) + ["e.g. Supabase"], extra: 38, min: 100, max: 200),
             account: TextWidth.fit(vars.map { $0.account?.login ?? "" } + ["email or username"], extra: 38, min: 130, max: 300),
             link: TextWidth.fit(vars.map { $0.sourceURL?.absoluteString ?? "" } + ["https://…"], extra: 40, min: 110, max: 380)
         )
@@ -99,13 +99,29 @@ struct EnvEditor: View {
             }
             .width(min: widths.value, ideal: widths.value)
 
+            // What the value is for. A guess from the provider shows as the
+            // prompt until a category is chosen.
             TableColumn("Service") { v in
                 HStack(spacing: 4) {
-                    CommitField(text: v.displayService, prompt: "e.g. DB, Firebase") { new in
+                    CommitField(text: v.serviceCategory, prompt: v.displayCategory.isEmpty ? "e.g. Database" : v.displayCategory) { new in
+                        VariableEditor.setCategory(v, to: new)
+                        return true
+                    }
+                    SuggestionMenu(help: "Choose what this value is for", items: Self.categorySuggestions) { pick in
+                        VariableEditor.setCategory(v, to: pick)
+                    }
+                }
+            }
+            .width(min: widths.category, ideal: widths.category)
+
+            // Who provides it.
+            TableColumn("Provider") { v in
+                HStack(spacing: 4) {
+                    CommitField(text: v.displayService, prompt: "e.g. Supabase") { new in
                         VariableEditor.setService(v, to: new)
                         return true
                     }
-                    SuggestionMenu(help: "Choose a service", items: Self.serviceSuggestions) { pick in
+                    SuggestionMenu(help: "Choose a provider", items: Self.serviceSuggestions) { pick in
                         VariableEditor.setService(v, to: pick)
                     }
                 }
@@ -354,9 +370,12 @@ struct EnvEditor: View {
 }
 
 extension EnvEditor {
-    /// Common services offered in the Service column's menu.
+    /// Common providers offered in the Provider column's menu.
     static let serviceSuggestions: [String] =
-        ServiceType.allCases.filter { $0 != .custom }.map(\.displayName) + ["Database", "Redis", "Email", "Analytics"]
+        ServiceType.allCases.filter { $0 != .custom }.map(\.displayName) + ["Redis", "Postgres", "Resend", "Sentry", "OpenAI"]
+
+    /// Service categories offered in the Service column's menu.
+    static let categorySuggestions: [String] = ServiceCategory.allCases.map(\.displayName)
 }
 
 /// Small chevron menu that fills a cell from a list of suggestions.

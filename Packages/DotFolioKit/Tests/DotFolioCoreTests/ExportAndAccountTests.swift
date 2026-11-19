@@ -34,37 +34,51 @@ struct AccountEditorTests {
     init() throws { context = ModelContext(try DotFolioSchema.makeContainer(inMemory: true)) }
 
     @Test func createValidatesAndRejectsDuplicates() throws {
-        let a = try AccountEditor.createAccount(service: .firebase, login: " dev@acme.studio ", context: context)
+        let a = try AccountEditor.createAccount(services: ["firebase"], login: " dev@acme.studio ", context: context)
         #expect(a.login == "dev@acme.studio")
+        #expect(a.services == ["Firebase"])
         #expect(throws: AccountEditor.Failure.duplicateLogin("DEV@acme.studio")) {
-            try AccountEditor.createAccount(service: .stripe, login: "DEV@acme.studio", context: context)
+            try AccountEditor.createAccount(services: ["Stripe"], login: "DEV@acme.studio", context: context)
         }
         #expect(throws: AccountEditor.Failure.emptyLogin) {
-            try AccountEditor.createAccount(service: .stripe, login: "  ", context: context)
+            try AccountEditor.createAccount(services: [], login: "  ", context: context)
         }
     }
 
-    @Test func customServiceNameOnlyForCustom() throws {
-        let a = try AccountEditor.createAccount(service: .custom, customName: "Resend", login: "x", context: context)
-        #expect(a.serviceName == "Resend")
-        try AccountEditor.update(a, service: .stripe, customName: "ignored", login: "x", displayName: "", notes: "", context: context)
-        #expect(a.customServiceName == nil)
-        #expect(a.serviceName == "Stripe")
+    @Test func oneLoginManyServices() throws {
+        let a = try AccountEditor.createAccount(services: ["Firebase", "google cloud", "Resend", "FIREBASE"], login: "me@gmail.com", context: context)
+        #expect(a.services == ["Firebase", "Google Cloud", "Resend"])
+        #expect(a.serviceSummary == "Firebase, Google Cloud, Resend")
+        try AccountEditor.update(a, services: ["Google Cloud", "Stripe"], login: "me@gmail.com", displayName: "Personal", notes: "", context: context)
+        #expect(a.services == ["Google Cloud", "Stripe"])
+        #expect(a.serviceType == .googleCloud)
     }
 
-    @Test func serviceProjectsCRUDAndConsoleFallback() throws {
-        let a = try AccountEditor.createAccount(service: .firebase, login: "dev@acme.studio", context: context)
-        let sp = try AccountEditor.addServiceProject(to: a, name: "Shop prod", externalID: "shop-prod", context: context)
-        #expect(sp.resolvedConsoleURL?.absoluteString == "https://console.firebase.google.com/project/shop-prod/overview")
+    @Test func serviceProjectsBelongToAServiceAndGetConsoleURL() throws {
+        let a = try AccountEditor.createAccount(services: ["Google Cloud"], login: "me@gmail.com", context: context)
+        let fb = try AccountEditor.addServiceProject(to: a, service: "firebase", name: "Shop prod", externalID: "shop-prod", context: context)
+        let supa = try AccountEditor.addServiceProject(to: a, service: "Supabase", name: "Blog", externalID: "abcd", context: context)
+        #expect(a.services == ["Google Cloud", "Firebase", "Supabase"]) // adding a project adds its service
+        #expect(fb.serviceName == "Firebase")
+        #expect(fb.resolvedConsoleURL?.absoluteString == "https://console.firebase.google.com/project/shop-prod/overview")
+        #expect(supa.resolvedConsoleURL?.absoluteString == "https://supabase.com/dashboard/project/abcd")
         #expect(throws: AccountEditor.Failure.invalidURL) {
-            try AccountEditor.update(sp, name: "Shop prod", externalID: "shop-prod", consoleURL: "nope nope")
+            try AccountEditor.update(fb, name: "Shop prod", externalID: "shop-prod", consoleURL: "nope nope")
         }
         #expect(throws: AccountEditor.Failure.emptyName) {
-            try AccountEditor.addServiceProject(to: a, name: " ", context: context)
+            try AccountEditor.addServiceProject(to: a, service: "Firebase", name: " ", context: context)
         }
-        AccountEditor.delete(sp, context: context)
+        AccountEditor.delete(fb, context: context)
         try context.save()
-        #expect(a.serviceProjects?.isEmpty == true)
+        #expect(a.serviceProjects?.count == 1)
+    }
+
+    @Test func legacySingleServiceAccountsStillRead() {
+        let legacy = Account(login: "old@acme.studio")
+        legacy.serviceTypeRaw = ServiceType.stripe.rawValue
+        #expect(legacy.services == ["Stripe"])
+        legacy.removeService("Stripe")
+        #expect(legacy.services.isEmpty)
     }
 
     @Test func deletingAccountKeepsVariablesUnlinked() throws {

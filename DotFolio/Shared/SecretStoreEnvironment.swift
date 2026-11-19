@@ -16,6 +16,7 @@ struct UnavailableSecretStore: SecretStore {
     func delete(_ ref: String) throws { throw KeychainError.missingEntitlement }
     func contains(_ ref: String) throws -> Bool { throw KeychainError.missingEntitlement }
     func deleteAll() throws { throw KeychainError.missingEntitlement }
+    func allRefs() throws -> [String] { throw KeychainError.missingEntitlement }
 }
 
 extension KeychainError {

@@ -2,8 +2,8 @@ import DotFolioModels
 import Foundation
 import SwiftData
 
-/// CRUD for service accounts and the projects inside them (e.g. a Firebase
-/// account and its Firebase projects). Metadata only; no secrets here.
+/// CRUD for accounts (one login, several services) and the projects inside
+/// each service (e.g. Firebase projects). Metadata only; no secrets here.
 public enum AccountEditor {
     public enum Failure: Error, Equatable {
         case emptyLogin
@@ -25,22 +25,23 @@ public enum AccountEditor {
 
     @MainActor
     @discardableResult
-    public static func createAccount(service: ServiceType, customName: String = "", login: String, displayName: String = "",
+    public static func createAccount(services: [String], login: String, displayName: String = "",
                                      notes: String = "", context: ModelContext) throws(Failure) -> Account {
         let login = try validatedLogin(login, excluding: nil, context: context)
-        let account = Account(serviceType: service, login: login, displayName: displayName.trimmingCharacters(in: .whitespaces),
-                              customServiceName: service == .custom ? customName.trimmingCharacters(in: .whitespaces) : nil,
-                              notes: notes)
+        let account = Account(login: login, displayName: displayName.trimmingCharacters(in: .whitespaces),
+                              services: services, notes: notes)
         context.insert(account)
         return account
     }
 
     @MainActor
-    public static func update(_ account: Account, service: ServiceType, customName: String, login: String,
+    public static func update(_ account: Account, services: [String], login: String,
                               displayName: String, notes: String, context: ModelContext) throws(Failure) {
         account.login = try validatedLogin(login, excluding: account, context: context)
-        account.serviceType = service
-        account.customServiceName = service == .custom ? customName.trimmingCharacters(in: .whitespaces) : nil
+        for old in account.services where !services.contains(where: { $0.caseInsensitiveCompare(old) == .orderedSame }) {
+            account.removeService(old)
+        }
+        for service in services { account.addService(service) }
         account.displayName = displayName.trimmingCharacters(in: .whitespaces)
         account.notes = notes
         account.updatedAt = .now
@@ -56,12 +57,15 @@ public enum AccountEditor {
 
     @MainActor
     @discardableResult
-    public static func addServiceProject(to account: Account, name: String, externalID: String = "", consoleURL: String = "",
-                                         context: ModelContext) throws(Failure) -> ServiceProject {
+    public static func addServiceProject(to account: Account, service: String, name: String, externalID: String = "",
+                                         consoleURL: String = "", context: ModelContext) throws(Failure) -> ServiceProject {
         let name = name.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { throw .emptyName }
         let url = try validatedURL(consoleURL)
-        let sp = ServiceProject(name: name, externalID: externalID.trimmingCharacters(in: .whitespaces), consoleURL: url)
+        account.addService(service)
+        let canonical = ServiceType(matching: service)?.displayName ?? service.trimmingCharacters(in: .whitespaces)
+        let sp = ServiceProject(name: name, externalID: externalID.trimmingCharacters(in: .whitespaces), consoleURL: url,
+                                serviceName: canonical)
         context.insert(sp)
         sp.account = account
         account.updatedAt = .now

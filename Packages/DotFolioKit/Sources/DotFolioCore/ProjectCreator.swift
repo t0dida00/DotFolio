@@ -8,21 +8,23 @@ public struct EnvDraftRow: Identifiable, Equatable, Sendable {
     public let id = UUID()
     public var key = ""
     public var value = ""
+    public var category = ""
     public var service = ""
     public var account = ""
     public var link = ""
     public var isRevealed = false
 
-    public init(key: String = "", value: String = "", service: String = "", account: String = "", link: String = "") {
+    public init(key: String = "", value: String = "", category: String = "", service: String = "", account: String = "", link: String = "") {
         self.key = key
         self.value = value
+        self.category = category
         self.service = service
         self.account = account
         self.link = link
     }
 
     public var isBlank: Bool {
-        [key, service, account, link].allSatisfy { $0.trimmingCharacters(in: .whitespaces).isEmpty } && value.isEmpty
+        [key, category, service, account, link].allSatisfy { $0.trimmingCharacters(in: .whitespaces).isEmpty } && value.isEmpty
     }
 }
 
@@ -113,6 +115,7 @@ public enum ProjectCreator {
             let variable = Variable(key: row.key.trimmingCharacters(in: .whitespaces), environment: environment)
             variable.sourceURL = InputValidation.webURL(row.link)
             variable.serviceLabel = row.service.trimmingCharacters(in: .whitespacesAndNewlines)
+            variable.serviceCategory = VariableEditor.normalizedCategory(row.category)
             if let ref = refs[row.id] {
                 variable.secretRef = ref
                 variable.hasValue = true

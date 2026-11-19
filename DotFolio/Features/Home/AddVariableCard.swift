@@ -4,7 +4,7 @@ import SwiftData
 import SwiftUI
 
 /// "Add variable", pinned to the bottom of the detail column.
-/// Layout: Name 30% · Value 70%, then Service 20% · Account 30% · Link 50%.
+/// Layout: Name 30% · Value 70%, then Service 15% · Provider 15% · Account 25% · Link 45%.
 struct AddVariableCard: View {
     let environment: ProjectEnvironment
     var nameFocused: FocusState<Bool>.Binding
@@ -14,6 +14,7 @@ struct AddVariableCard: View {
 
     @State private var newKey = ""
     @State private var newValue = ""
+    @State private var newCategory = ""
     @State private var newService = ""
     @State private var newAccount = ""
     @State private var newLink = ""
@@ -43,9 +44,12 @@ struct AddVariableCard: View {
                 }
             }
 
-            ProportionalRow(fractions: [0.2, 0.3, 0.5]) {
+            ProportionalRow(fractions: [0.15, 0.15, 0.25, 0.45]) {
                 LabeledField("Service") {
-                    TextField("", text: $newService, prompt: Text("e.g. Firebase"))
+                    TextField("", text: $newCategory, prompt: Text(ServiceCategory.suggested(forProvider: newService)?.displayName ?? "e.g. Database"))
+                }
+                LabeledField("Provider") {
+                    TextField("", text: $newService, prompt: Text("e.g. Supabase"))
                 }
                 LabeledField("Account") {
                     TextField("", text: $newAccount, prompt: Text("email or username"))
@@ -75,16 +79,15 @@ struct AddVariableCard: View {
         .textFieldStyle(.roundedBorder)
         .onSubmit(add)
         .padding(14)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.separator))
+        .panel(radius: DS.Radius.medium, bordered: true)
     }
 
     private func add() {
         do {
-            try VariableEditor.add(key: newKey, value: newValue, service: newService, account: newAccount, link: newLink,
+            try VariableEditor.add(key: newKey, value: newValue, category: newCategory, service: newService, account: newAccount, link: newLink,
                                    to: environment, context: context, secrets: secrets)
             errorMessage = nil
-            newKey = ""; newValue = ""; newService = ""; newAccount = ""; newLink = ""
+            newKey = ""; newValue = ""; newCategory = ""; newService = ""; newAccount = ""; newLink = ""
             nameFocused.wrappedValue = true
         } catch let failure as VariableEditor.Failure {
             errorMessage = failure.message

@@ -5,7 +5,7 @@ import SwiftData
 import SwiftUI
 
 /// "New Project", shown inline in the right panel: name, optional description
-/// and link, and a .env table (#, Name, Value, Service, Account, Link).
+/// and link, and a .env table (#, Name, Value, Service, Provider, Account, Link).
 struct NewProjectForm: View {
     @Environment(\.modelContext) private var context
     /// Back to the project list (after Create or Cancel).
@@ -179,10 +179,16 @@ struct NewProjectForm: View {
                 .width(min(320, max(140, (draft.rows.filter(\.isRevealed).map { TextWidth.of($0.value, monospaced: true) }.max() ?? 0) + 50)))
 
                 TableColumn("Service") { row in
-                    TextField("", text: binding(row.id, \.service), prompt: Text("e.g. DB, Firebase"))
+                    TextField("", text: binding(row.id, \.category), prompt: Text("e.g. Database"))
                         .textFieldStyle(.plain)
                 }
-                .width(TextWidth.fit(draft.rows.map(\.service) + ["e.g. DB, Firebase"], extra: 20, min: 100, max: 200))
+                .width(TextWidth.fit(draft.rows.map(\.category) + ["e.g. Database"], extra: 20, min: 100, max: 160))
+
+                TableColumn("Provider") { row in
+                    TextField("", text: binding(row.id, \.service), prompt: Text("e.g. Supabase"))
+                        .textFieldStyle(.plain)
+                }
+                .width(TextWidth.fit(draft.rows.map(\.service) + ["e.g. Supabase"], extra: 20, min: 100, max: 200))
 
                 TableColumn("Account") { row in
                     TextField("", text: binding(row.id, \.account), prompt: Text("email or username"))

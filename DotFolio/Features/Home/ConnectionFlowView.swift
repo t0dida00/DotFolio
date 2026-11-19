@@ -55,7 +55,7 @@ private struct WaitingStep: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
-            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
 
             HStack(spacing: 6) {
                 ProgressView().controlSize(.small)
@@ -150,7 +150,7 @@ private struct FailedStep: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
 
             HStack(spacing: 10) {
                 Button(failure.retryTitle, action: model.retry)
@@ -254,7 +254,7 @@ struct ListRow: View {
             }
             .foregroundStyle(.secondary)
             .frame(width: 40, height: 40)
-            .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
                 title.font(.body).lineLimit(1)
@@ -443,7 +443,7 @@ private struct RepoPickerStep: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
     }
 }
 

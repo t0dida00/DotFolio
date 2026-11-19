@@ -47,6 +47,9 @@ struct ProjectBrowser: View {
             GeometryReader { proxy in
                 HStack(spacing: 0) {
                     VStack(spacing: 0) {
+                        brandHeader
+                        Divider()
+                            .padding(.horizontal, 12)
                         Picker("Show", selection: $mode) {
                             ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                         }
@@ -86,11 +89,8 @@ struct ProjectBrowser: View {
                 }
             }
         }
-        .onAppear(perform: selectFirstIfNeeded)
-        .onChange(of: projects.count) { _, _ in
-            pruneTabs()
-            selectFirstIfNeeded()
-        }
+        // No auto-open: with no tab open the Overview dashboard is the home view.
+        .onChange(of: projects.count) { _, _ in pruneTabs() }
         .onChange(of: selection) { _, id in
             if let id, !openTabs.contains(id) { openTabs.append(id) }
             selectedProject?.lastOpenedAt = .now
@@ -127,8 +127,8 @@ struct ProjectBrowser: View {
         } message: {
             let used = accountPendingDeletion?.allLinkedVariables.count ?? 0
             Text(used == 0
-                 ? "Its service projects are deleted too. This can’t be undone."
-                 : "\(used) \(used == 1 ? "variable keeps" : "variables keep") existing but lose this source link. Its service projects are deleted too. This can’t be undone.")
+                 ? "Its provider projects (e.g. Firebase projects) are deleted too. This can’t be undone."
+                 : "\(used) \(used == 1 ? "variable keeps" : "variables keep") existing but lose this source link. Its provider projects (e.g. Firebase projects) are deleted too. This can’t be undone.")
         }
         .alert("Couldn’t delete all projects", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
             Button("OK", role: .cancel) {}
@@ -230,11 +230,13 @@ struct ProjectBrowser: View {
                 .clickableCursor()
             }
 
-            // Shown until a GitHub or GitLab account is linked.
+            // Shown until a GitHub (or, once supported, GitLab) account is linked.
             if !isSignedIn {
                 Divider()
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Sign in to GitHub or GitLab to import your repos and their .env.example.")
+                    Text(FeatureFlags.gitLab
+                         ? "Sign in to GitHub or GitLab to import your repos and their .env.example."
+                         : "Sign in to GitHub to import your repos and their .env.example.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -243,24 +245,50 @@ struct ProjectBrowser: View {
                             Label { Text("GitHub") } icon: { BrandMark.github.image.resizable().scaledToFit().frame(width: 13, height: 13) }
                                 .frame(maxWidth: .infinity)
                         }
-                        Button(action: flow.connectGitLab) {
-                            Label { Text("GitLab") } icon: { BrandMark.gitlab.image.resizable().scaledToFit().frame(width: 13, height: 13) }
-                                .frame(maxWidth: .infinity)
+                        if FeatureFlags.gitLab {
+                            Button(action: flow.connectGitLab) {
+                                Label { Text("GitLab") } icon: { BrandMark.gitlab.image.resizable().scaledToFit().frame(width: 13, height: 13) }
+                                    .frame(maxWidth: .infinity)
+                            }
                         }
                     }
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.capsule)
                     .clickableCursor()
-                    Button("Self-hosted GitLab…", action: flow.showGitLabHost)
-                        .buttonStyle(.link)
-                        .font(.callout)
-                        .clickableCursor()
+                    if FeatureFlags.gitLab {
+                        Button("Self-hosted GitLab…", action: flow.showGitLabHost)
+                            .buttonStyle(.link)
+                            .font(.callout)
+                            .clickableCursor()
+                    }
                 }
             }
         }
         .padding(12)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
+    }
+
+    // MARK: Brand
+
+    /// Logo, name and slogan, stacked and centered at the top of the left column.
+    private var brandHeader: some View {
+        VStack(spacing: 6) {
+            AppMark(size: 64)
+                .padding(.bottom, 4)
+            Text("DotFolio")
+                .font(.title3.weight(.semibold))
+            Text("Every .env, safe in your Keychain.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 14)
+        .padding(.top, 20)
+        .padding(.bottom, 14)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: Accounts mode
@@ -305,7 +333,7 @@ struct ProjectBrowser: View {
             ContentUnavailableView(
                 accounts.isEmpty ? "No accounts yet" : "No account selected",
                 systemImage: "person.crop.circle",
-                description: Text("Accounts are the service logins your variables come from — which Firebase, Stripe or AWS login a project uses.")
+                description: Text("Accounts are the logins your variables come from — which Firebase, Stripe or AWS login a project uses.")
             )
         }
     }
@@ -417,10 +445,10 @@ struct ProjectBrowser: View {
             )
             .id(project.persistentModelID)
         } else {
-            ContentUnavailableView(
-                "No project open",
-                systemImage: "sidebar.right",
-                description: Text("Select a project in the list to open it in a tab.")
+            // No tab open: show what DotFolio is tracking instead of an empty pane.
+            OverviewDashboard(
+                onOpenProject: { selection = $0.persistentModelID },
+                onShowAccounts: { mode = .accounts }
             )
         }
     }
@@ -471,12 +499,6 @@ struct ProjectBrowser: View {
     private func pruneTabs() {
         let ids = Set(projects.map(\.persistentModelID))
         openTabs.removeAll { !ids.contains($0) }
-    }
-
-    private func selectFirstIfNeeded() {
-        if selectedProject == nil && openTabs.isEmpty {
-            selection = ProjectSearch.sorted(projects, by: sort).first?.persistentModelID
-        }
     }
 
     private var deletionTitle: String {
@@ -625,7 +647,7 @@ private struct SearchField: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Search projects, keys, accounts", text: $text)
+            TextField("Search projects, keys, providers, accounts", text: $text)
                 .textFieldStyle(.plain)
                 .focused(isFocused)
                 .onExitCommand { text = "" }

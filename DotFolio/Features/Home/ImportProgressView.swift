@@ -112,7 +112,7 @@ private struct TransferGraphic: View {
                 .resizable().scaledToFit()
                 .frame(width: 26, height: 26)
                 .frame(width: 52, height: 52)
-                .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
 
             TimelineView(.animation(minimumInterval: 0.25)) { context in
                 let phase = Int(context.date.timeIntervalSinceReferenceDate * 4) % 4
@@ -158,7 +158,7 @@ private struct StatTile: View {
                 // Bounces each time the count goes up during an import.
                 .symbolMotion(.bounce, value: value)
                 .frame(width: 34, height: 34)
-                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
             VStack(alignment: .leading, spacing: 0) {
                 Text(value, format: .number)
                     .font(.title2.weight(.semibold).monospacedDigit())
@@ -170,8 +170,7 @@ private struct StatTile: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.separator))
+        .panel(radius: DS.Radius.medium, bordered: true)
         .accessibilityElement(children: .combine)
     }
 }
@@ -211,7 +210,7 @@ private struct ImportLog: View {
                 withAnimation(.smooth) { proxy.scrollTo("bottom", anchor: .bottom) }
             }
         }
-        .background(Self.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(Self.background, in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
         .overlay(alignment: .topTrailing) {
             HStack(spacing: 6) {
                 ForEach([Color.red, .yellow, .green], id: \.self) { Circle().fill($0.opacity(0.7)).frame(width: 8, height: 8) }

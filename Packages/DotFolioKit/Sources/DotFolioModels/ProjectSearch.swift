@@ -43,12 +43,13 @@ public enum ProjectSearch {
         let variables = project.allVariables
         if let v = variables.first(where: { hit($0.key) }) { return .variableKey(v.key) }
         if let v = variables.first(where: { hit($0.serviceLabel) }) { return .service(v.serviceLabel) }
+        if let v = variables.first(where: { hit($0.serviceCategory) }) { return .service(v.serviceCategory) }
 
         for usage in project.sourceUsages {
             let account = usage.account
             if hit(account.login) { return .account(account.login) }
             if hit(account.displayName) { return .account(account.displayName) }
-            if hit(account.serviceName) { return .service(account.serviceName) }
+            if let service = account.services.first(where: hit) { return .service(service) }
             if let sp = usage.serviceProject {
                 if hit(sp.name) { return .service(sp.name) }
                 if hit(sp.externalID) { return .service(sp.externalID) }

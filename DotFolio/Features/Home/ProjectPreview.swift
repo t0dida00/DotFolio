@@ -82,9 +82,8 @@ struct ProjectPreview: View {
                     label(project.provider == .none ? "Link" : "Repository")
                     HStack(spacing: 6) {
                         ProviderIcon(provider: project.provider).foregroundStyle(.secondary)
-                        Link(project.repoFullName.isEmpty ? (url.host() ?? url.absoluteString) : project.repoFullName, destination: url)
-                            .clickableCursor()
-                            .help(url.absoluteString)
+                        LinkText(url: url, title: project.repoFullName.isEmpty ? (url.host() ?? url.absoluteString) : project.repoFullName)
+                            .fixedSize()
                     }
                 }
             }

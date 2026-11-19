@@ -88,6 +88,22 @@ public struct KeychainStore: SecretStore, Sendable {
         return true
     }
 
+    public func allRefs() throws -> [String] {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: configuration.service,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+        applyKeychainSelection(to: &query)
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return [] }
+        try check(status)
+        let items = result as? [[String: Any]] ?? []
+        return items.compactMap { $0[kSecAttrAccount as String] as? String }
+    }
+
     public func deleteAll() throws {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

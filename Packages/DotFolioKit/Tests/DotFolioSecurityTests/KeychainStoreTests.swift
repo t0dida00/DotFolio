@@ -124,6 +124,15 @@ struct KeychainStoreTests {
         #expect(try b.string(for: "ref-0") == "keep")
     }
 
+    @Test func listsRefsWithoutReadingValues() throws {
+        let store = makeStore()
+        defer { try? store.deleteAll() }
+        #expect(try store.allRefs().isEmpty)
+        try store.setString("a", for: "ref-1")
+        try store.setString("b", for: "ref-2")
+        #expect(Set(try store.allRefs()) == ["ref-1", "ref-2"])
+    }
+
     @Test func deleteAllOnEmptyServiceSucceeds() throws {
         try makeStore().deleteAll()
     }

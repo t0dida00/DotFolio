@@ -6,6 +6,20 @@ import Testing
 import DotFolioModels
 import DotFolioSecurity
 
+/// Behaves like the real Keychain for `.userPresence` items: adding and
+/// deleting work without authentication, overwriting an existing item doesn't.
+final class NoOverwriteStore: SecretStore, @unchecked Sendable {
+    let inner = InMemorySecretStore()
+    func setData(_ value: Data, for ref: String, context: LAContext?) throws {
+        if try inner.contains(ref) { throw KeychainError.authenticationRequired }
+        try inner.setData(value, for: ref, context: context)
+    }
+    func data(for ref: String, context: LAContext?) throws -> Data? { try inner.data(for: ref, context: context) }
+    func delete(_ ref: String) throws { try inner.delete(ref) }
+    func contains(_ ref: String) throws -> Bool { try inner.contains(ref) }
+    func deleteAll() throws { try inner.deleteAll() }
+}
+
 @MainActor
 struct VariableEditorTests {
     let context: ModelContext
@@ -61,6 +75,19 @@ struct VariableEditorTests {
         try VariableEditor.setValue(v, to: "", secrets: secrets)
         #expect(!v.hasValue)
         #expect(secrets.itemCount == 0)
+    }
+
+    @Test func replacingAValueNeverOverwritesTheProtectedItem() throws {
+        let store = NoOverwriteStore()
+        let v = try VariableEditor.add(key: "A", value: "one", to: env, context: context, secrets: store)
+        let firstRef = v.secretRef
+        try VariableEditor.setValue(v, to: "two", secrets: store) // would throw if it updated in place
+        #expect(v.secretRef != firstRef)
+        #expect(try store.string(for: v.secretRef.uuidString) == "two")
+        #expect(store.inner.itemCount == 1) // old item removed
+        try VariableEditor.setValue(v, to: "", secrets: store)
+        #expect(!v.hasValue)
+        #expect(store.inner.itemCount == 0)
     }
 
     @Test func setLinkValidatesAndClears() throws {
@@ -129,6 +156,17 @@ struct VariableServiceAccountTests {
         #expect(v.account?.serviceType == .stripe)
         VariableEditor.setAccount(v, login: "", context: context)
         #expect(v.account == nil)
+    }
+
+    @Test func sameLoginCollectsServicesAcrossVariables() throws {
+        let a = try VariableEditor.add(key: "FIREBASE_KEY", service: "Firebase", account: "me@gmail.com", to: env, context: context, secrets: secrets)
+        let b = try VariableEditor.add(key: "MAPS_KEY", service: "Google Maps", account: "me@gmail.com", to: env, context: context, secrets: secrets)
+        #expect(a.account?.persistentModelID == b.account?.persistentModelID)
+        #expect(a.account?.services == ["Firebase", "Google Maps"])
+        VariableEditor.setService(b, to: "Google Cloud")
+        #expect(a.account?.services == ["Firebase", "Google Maps", "Google Cloud"])
+        // Each variable shows its own service, not the account's first one.
+        #expect(b.displayService == "Google Cloud")
     }
 
     @Test func searchFindsServiceLabel() throws {

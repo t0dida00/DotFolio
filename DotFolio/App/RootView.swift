@@ -15,10 +15,13 @@ struct RootView: View {
         @Bindable var navigation = navigation
         HomeView(model: flow)
         .onAppear {
+            // Category words typed as providers before Service/Provider were split.
+            ServiceCategoryMigration.run(context: context)
             flow.configure(context: context,
                            tokens: KeychainStore.oauthTokens(bundleID: DotFolioApp.bundleID),
                            secrets: KeychainStore.secrets(bundleID: DotFolioApp.bundleID))
         }
+        .sheet(isPresented: $navigation.isVerifyingData) { VerifyDataSheet() }
         .confirmationDialog("Erase all DotFolio data?", isPresented: $navigation.isConfirmingErase) {
             Button("Erase All Data", role: .destructive, action: eraseAll)
         } message: {
