@@ -123,11 +123,7 @@ struct NewProjectForm: View {
             HStack {
                 Text("Environment variables").font(DS.Font.panelTitle)
                 Spacer()
-                Picker("Environment", selection: $draft.environmentName) {
-                    ForEach(ProjectEnvironment.defaultNames, id: \.self) { Text($0).tag($0) }
-                }
-                .fixedSize()
-                .clickableCursor()
+                EnvironmentPicker(names: ProjectEnvironment.defaultNames, selection: $draft.environmentName)
             }
 
             Table(draft.rows, selection: $selection) {

@@ -39,6 +39,34 @@ Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project sec
 - Unfinished features are hidden behind `FeatureFlags`, not shown as "coming soon".
 - Data integrity: `IntegrityCheck` (menu **DotFolio → Verify Data…**) must stay clean after any change that writes variables or Keychain items; add a case to its tests when introducing a new invariant.
 
+## Releases: every update to `main` ships a release
+
+Whenever new work lands on `main` (a merge or a push), publish a new version in the same session — the app's **Check for Updates…** reads GitHub Releases, so an unreleased `main` is invisible to users.
+
+1. **Pick the version** (semver, `MAJOR.MINOR.PATCH`): new feature → MINOR, fix only → PATCH, breaking data/behavior change → MAJOR.
+2. **Bump** in `project.yml`: `MARKETING_VERSION` to the new version and `CURRENT_PROJECT_VERSION` +1 (build numbers only go up). Run `xcodegen generate`.
+3. **Release notes**: add an entry at the top of `DotFolio/App/ReleaseNotes.swift` (shown in *What’s New*), with the same highlights you will put on GitHub.
+4. **Verify**: `swift test` passes, the app builds, and the release notes read correctly in *What’s New*.
+5. **Commit** `Release vX.Y.Z` on `main`, **tag** it and push both:
+   ```bash
+   git tag -a vX.Y.Z -m "DotFolio X.Y.Z"
+   git push origin main vX.Y.Z
+   ```
+6. **Build the app** (Release configuration) and zip it:
+   ```bash
+   xcodebuild -project DotFolio.xcodeproj -scheme DotFolio -configuration Release -derivedDataPath build/release build
+   ditto -c -k --keepParent build/release/Build/Products/Release/DotFolio.app build/DotFolio-X.Y.Z.zip
+   ```
+7. **Publish the GitHub Release** for the tag with the notes and the zip (tag format `vX.Y.Z` — `UpdateChecker` strips the `v`):
+   ```bash
+   gh release create vX.Y.Z build/DotFolio-X.Y.Z.zip --title "DotFolio X.Y.Z" --notes-file <notes.md>
+   ```
+8. **Check**: an older build’s *Check for Updates…* now offers X.Y.Z.
+
+Never skip a release after changing `main`, and never re-use or move a published tag. Pushing tags and publishing releases are outward-facing: confirm with the user before running steps 5–7.
+
+Until the app is signed with a paid Developer ID and notarized, the zip is for the owner’s own Macs (Gatekeeper will warn elsewhere) and updates are manual (download, replace the app).
+
 ## UI changes: verify before finishing
 
 Never report a UI change as done from reading code alone. Before ending the turn:

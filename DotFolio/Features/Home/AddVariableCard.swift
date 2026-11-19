@@ -63,7 +63,8 @@ struct AddVariableCard: View {
             }
 
             HStack {
-                Text(errorMessage ?? "The value is saved to your Keychain.")
+                // Only errors here: the Keychain hint lives once, under the table.
+                Text(errorMessage ?? " ")
                     .font(.caption)
                     .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
                     .lineLimit(2)

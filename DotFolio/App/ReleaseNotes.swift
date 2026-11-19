@@ -13,7 +13,9 @@ enum ReleaseNotes {
             ("square.and.arrow.down", "Import from GitHub",
              "Sign in with a read-only GitHub App and turn repos into projects, with variables from each .env.example."),
             ("tablecells", "Edit .env per environment",
-             "Name, value, service, provider, account and console link — add, edit, delete and copy between environments."),
+             "Name, value, service, provider, account and console link — add, edit, delete and copy between environments. Color-coded environments, with a reminder when production is open."),
+            ("square.on.square", "Projects in tabs",
+             "Open several projects as tabs, edit a project’s name, description, repo link and local folder, and see when you last opened each."),
             ("square.and.arrow.up", "Export .env",
              "To the clipboard (auto-cleared), your project folder (with a .gitignore check) or anywhere."),
             ("person.crop.circle", "Accounts",
@@ -22,6 +24,8 @@ enum ReleaseNotes {
              "What you track, missing values, stale secrets, providers and services in use."),
             ("checkmark.shield", "Verify Data",
              "Cross-checks the database against the Keychain and repairs what it safely can."),
+            ("arrow.down.circle", "Check for Updates",
+             "See when a new version is published on GitHub, and what’s new in each one."),
         ]),
     ]
 

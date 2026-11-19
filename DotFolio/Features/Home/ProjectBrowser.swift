@@ -620,6 +620,17 @@ private struct ProjectListRow: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
+            Spacer(minLength: DS.Space.s)
+            if let opened = project.lastOpenedAt {
+                // Compact age (1m, 5h, 1d…), refreshed every 15 minutes.
+                TimelineView(.periodic(from: .now, by: CompactAge.refreshInterval)) { context in
+                    Text(CompactAge.string(since: opened, now: context.date))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.tertiary)
+                }
+                .help("Last opened \(opened.formatted(date: .abbreviated, time: .shortened))")
+                .accessibilityLabel("Last opened \(opened.formatted(.relative(presentation: .named)))")
+            }
         }
         .padding(.vertical, DS.Space.xs)
         .clickableCursor()

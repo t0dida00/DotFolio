@@ -126,12 +126,6 @@ struct ProjectPreview: View {
                 label("Created")
                 Text(project.createdAt.formatted(date: .abbreviated, time: .shortened))
             }
-            if let opened = project.lastOpenedAt {
-                GridRow {
-                    label("Last opened")
-                    Text(opened.formatted(.relative(presentation: .named)))
-                }
-            }
         }
     }
 
@@ -159,15 +153,14 @@ struct ProjectPreview: View {
                         .id(environment.id)
                 }
                 Spacer()
-                Picker("Environment", selection: Binding(get: { environment?.id }, set: { environmentID = $0 })) {
-                    ForEach(environments) { env in
-                        Text(env.name).tag(Optional(env.id))
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .clickableCursor()
+                EnvironmentPicker(
+                    environments: environments,
+                    selection: Binding(get: { environment?.id }, set: { environmentID = $0 })
+                )
+            }
+
+            if let environment, environment.isProtected {
+                ProtectedEnvironmentBanner(name: environment.name)
             }
 
             if let environment {

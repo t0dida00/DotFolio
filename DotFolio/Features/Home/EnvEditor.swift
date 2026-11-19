@@ -59,20 +59,20 @@ struct EnvEditor: View {
     // MARK: Column widths
 
     /// Minimum width per column: just wide enough for its widest value (or
-    /// its prompt), within limits. Columns have no maximum, so any spare width
+    /// its header), within limits. Columns have no maximum, so any spare width
     /// is shared out and the table always fills the panel; narrower than the
     /// minimums → the table scrolls sideways.
     private var widths: (name: CGFloat, value: CGFloat, category: CGFloat, service: CGFloat, account: CGFloat, link: CGFloat) {
         let vars = variables
         let revealedWidest = revealed.values.map { TextWidth.of($0, monospaced: true) }.max() ?? 0
         return (
-            name: TextWidth.fit(vars.map(\.key) + ["NAME"], monospaced: true, extra: 20, min: 80, max: 280),
+            name: TextWidth.fit(vars.map(\.key) + ["Name"], monospaced: true, extra: 20, min: 80, max: 280),
             // Dots (or a revealed value) + the eye and copy buttons.
             value: min(320, max(150, revealedWidest + 70)),
-            category: TextWidth.fit(vars.map(\.displayCategory) + ["e.g. Database"], extra: 38, min: 100, max: 160),
-            service: TextWidth.fit(vars.map(\.displayService) + ["e.g. Supabase"], extra: 38, min: 100, max: 200),
-            account: TextWidth.fit(vars.map { $0.account?.login ?? "" } + ["email or username"], extra: 38, min: 130, max: 300),
-            link: TextWidth.fit(vars.map { $0.sourceURL?.absoluteString ?? "" } + ["https://…"], extra: 40, min: 110, max: 380)
+            category: TextWidth.fit(vars.map(\.displayCategory) + ["Service"], extra: 38, min: 90, max: 160),
+            service: TextWidth.fit(vars.map(\.displayService) + ["Provider"], extra: 38, min: 90, max: 200),
+            account: TextWidth.fit(vars.map { $0.account?.login ?? "" } + ["Account"], extra: 38, min: 100, max: 300),
+            link: TextWidth.fit(vars.map { $0.sourceURL?.absoluteString ?? "" } + ["Link"], extra: 40, min: 90, max: 380)
         )
     }
 
@@ -88,7 +88,7 @@ struct EnvEditor: View {
             .width(24)
 
             TableColumn("Name") { v in
-                CommitField(text: v.key, prompt: "NAME", monospaced: true) { new in
+                CommitField(text: v.key, prompt: "", monospaced: true) { new in
                     attempt { try VariableEditor.rename(v, to: new) }
                 }
             }
@@ -99,11 +99,11 @@ struct EnvEditor: View {
             }
             .width(min: widths.value, ideal: widths.value)
 
-            // What the value is for. A guess from the provider shows as the
-            // prompt until a category is chosen.
+            // What the value is for. No example placeholders; only a real guess
+            // from the provider (Redis → Cache) shows, dimmed, until one is chosen.
             TableColumn("Service") { v in
                 HStack(spacing: DS.Space.xs) {
-                    CommitField(text: v.serviceCategory, prompt: v.displayCategory.isEmpty ? "e.g. Database" : v.displayCategory) { new in
+                    CommitField(text: v.serviceCategory, prompt: v.displayCategory) { new in
                         VariableEditor.setCategory(v, to: new)
                         return true
                     }
@@ -117,7 +117,7 @@ struct EnvEditor: View {
             // Who provides it.
             TableColumn("Provider") { v in
                 HStack(spacing: DS.Space.xs) {
-                    CommitField(text: v.displayService, prompt: "e.g. Supabase") { new in
+                    CommitField(text: v.displayService, prompt: "") { new in
                         VariableEditor.setService(v, to: new)
                         return true
                     }
@@ -130,7 +130,7 @@ struct EnvEditor: View {
 
             TableColumn("Account") { v in
                 HStack(spacing: DS.Space.xs) {
-                    CommitField(text: v.account?.login ?? "", prompt: "email or username") { new in
+                    CommitField(text: v.account?.login ?? "", prompt: "") { new in
                         VariableEditor.setAccount(v, login: new, context: context)
                         return true
                     }
@@ -143,7 +143,7 @@ struct EnvEditor: View {
 
             TableColumn("Link") { v in
                 HStack(spacing: DS.Space.s) {
-                    CommitField(text: v.sourceURL?.absoluteString ?? "", prompt: "https://…") { new in
+                    CommitField(text: v.sourceURL?.absoluteString ?? "", prompt: "") { new in
                         attempt { try VariableEditor.setLink(v, to: new) }
                     }
                     if let url = v.sourceURL {
@@ -192,7 +192,7 @@ struct EnvEditor: View {
     private func valueCell(_ v: Variable) -> some View {
         HStack(spacing: DS.Space.s) {
             if let plain = revealed[v.id] {
-                CommitField(text: plain, prompt: "value", monospaced: true) { new in
+                CommitField(text: plain, prompt: "", monospaced: true) { new in
                     attempt {
                         try VariableEditor.setValue(v, to: new, secrets: secrets)
                         revealed[v.id] = new.isEmpty ? nil : new
@@ -200,7 +200,7 @@ struct EnvEditor: View {
                 }
             } else {
                 // Typing here replaces the value; the old one is never shown.
-                CommitField(text: "", prompt: v.hasValue ? "••••••••" : "Not set", monospaced: true, secure: true, keepsTextAfterCommit: false) { new in
+                CommitField(text: "", prompt: v.hasValue ? "••••••••" : "", monospaced: true, secure: true, keepsTextAfterCommit: false) { new in
                     guard !new.isEmpty else { return true }
                     return attempt { try VariableEditor.setValue(v, to: new, secrets: secrets) }
                 }
@@ -245,7 +245,7 @@ struct EnvEditor: View {
             copyMenu
                 .padding(.leading, DS.Space.s)
             Spacer()
-            Text(errorMessage ?? copyNotice ?? "Values live in your Keychain. Reveal and Copy ask for Touch ID.")
+            Text(errorMessage ?? copyNotice ?? "Values live in your Keychain · reveal and copy ask for Touch ID")
                 .font(.caption)
                 .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
                 .lineLimit(2)

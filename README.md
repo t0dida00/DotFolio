@@ -82,9 +82,19 @@ swift test
 
 Plain `swift test` runs use the file-based keychain, because the data protection keychain needs a signed binary with entitlements.
 
+## Releases
+
+Every update merged into `main` is shipped as a new release, so **Check for Updates…** in the app always reflects `main`:
+
+1. Bump `MARKETING_VERSION` (semver) and `CURRENT_PROJECT_VERSION` in `project.yml`.
+2. Add the highlights to `DotFolio/App/ReleaseNotes.swift` (*What’s New* in the app).
+3. Commit `Release vX.Y.Z`, tag `vX.Y.Z`, push `main` and the tag.
+4. Publish a GitHub Release for the tag with the notes and the zipped `DotFolio.app`.
+
+The full checklist with commands is in [CLAUDE.md](CLAUDE.md#releases-every-update-to-main-ships-a-release).
+
 ## Roadmap
 
 - GitLab and self-hosted GitLab sign-in
-- Export `.env` files into a project folder
 - Sync with `.env.example` changes in the repository
 - `dotfolio` command-line tool sharing the same Keychain items
