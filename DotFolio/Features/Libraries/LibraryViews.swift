@@ -37,27 +37,38 @@ struct LibraryProviderList: View {
     @Binding var selection: String?
 
     private static let allTag = "\u{0}all"
+    @FocusState private var listFocused: Bool
 
     var body: some View {
         if total == 0 {
             ContentUnavailableView("No keys yet", systemImage: "books.vertical",
                                    description: Text("Keep keys you reuse across projects here."))
         } else {
-            List(selection: Binding(get: { selection ?? Self.allTag }, set: { selection = $0 == Self.allTag ? nil : $0 })) {
+            let current = selection ?? Self.allTag
+            List {
                 row(title: "All keys", count: total, icon: TintedIcon(symbol: "books.vertical", tint: DS.Palette.violet, size: 28))
-                    .tag(Self.allTag)
+                    .sidebarRow(isSelected: current == Self.allTag) { select(Self.allTag) }
                 Section("Providers") {
                     ForEach(groups) { group in
                         row(title: group.title, count: group.keys.count,
                             icon: TintedIcon(symbol: ServiceType.symbol(for: group.provider),
                                              tint: group.provider.isEmpty ? DS.Palette.neutral : ServiceType.tint(for: group.provider), size: 28))
-                            .tag(group.id)
+                            .sidebarRow(isSelected: current == group.id) { select(group.id) }
                     }
                 }
             }
             .listStyle(.inset)
             .scrollContentBackground(.hidden)
+            .sidebarKeyboard(focused: $listFocused) { step in
+                let order = [Self.allTag] + groups.map(\.id)
+                if let next = SidebarSelection.neighbor(of: current, in: order, step: step) { select(next) }
+            }
         }
+    }
+
+    private func select(_ id: String) {
+        selection = id == Self.allTag ? nil : id
+        listFocused = true
     }
 
     private func row(title: String, count: Int, icon: some View) -> some View {

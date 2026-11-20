@@ -80,7 +80,7 @@ final class ConnectionFlowModel {
             switch self {
             case .notConfigured: "Add the GitHub App’s Client ID to GitHubConfig.swift, then rebuild."
             case .codeExpired: "Codes are valid for 15 minutes. Get a new code and try again."
-            case .accessDenied: "DotFolio needs read access to your repos to create projects. You can try again anytime."
+            case .accessDenied: "DOTFOLIO needs read access to your repos to create projects. You can try again anytime."
             case .signedOut: "The token was revoked or expired. Sign in again."
             case .network: "Check your internet connection and try again."
             case .other(let detail): detail

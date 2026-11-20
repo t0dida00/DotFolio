@@ -34,7 +34,7 @@ public enum EnvExport {
         let project = environment.project?.name ?? "project"
         let header = [
             "\(project) — \(environment.name)",
-            "Exported by DotFolio. Contains secrets: never commit this file.",
+            "Exported by DOTFOLIO. Contains secrets: never commit this file.",
         ]
         return Output(text: EnvExporter.render(entries, header: header), missing: missing)
     }

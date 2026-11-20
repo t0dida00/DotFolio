@@ -1,4 +1,6 @@
-# DotFolio
+# DOTFOLIO
+
+The app’s name is written **DOTFOLIO** (all caps) everywhere users see it: the app bundle, menus, UI text, release titles. Code identifiers, the scheme, the repo and the bundle ID `app.dotfolio.DotFolio` keep `DotFolio`.
 
 Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project secrets in the Keychain and remembers where each one comes from (account, service, repo).
 
@@ -50,17 +52,17 @@ Whenever new work lands on `main` (a merge or a push), publish a new version in 
 4. **Verify**: `swift test` passes, the app builds, and the release notes read correctly in *What’s New*.
 5. **Commit** `Release vX.Y.Z` on `main`, **tag** it and push both:
    ```bash
-   git tag -a vX.Y.Z -m "DotFolio X.Y.Z"
+   git tag -a vX.Y.Z -m "DOTFOLIO X.Y.Z"
    git push origin main vX.Y.Z
    ```
 6. **Build the app** (Release configuration) and zip it:
    ```bash
    xcodebuild -project DotFolio.xcodeproj -scheme DotFolio -configuration Release -derivedDataPath build/release build
-   ditto -c -k --keepParent build/release/Build/Products/Release/DotFolio.app build/DotFolio-X.Y.Z.zip
+   ditto -c -k --keepParent build/release/Build/Products/Release/DOTFOLIO.app build/DOTFOLIO-X.Y.Z.zip
    ```
 7. **Publish the GitHub Release** for the tag with the notes and the zip (tag format `vX.Y.Z` — `UpdateChecker` strips the `v`):
    ```bash
-   gh release create vX.Y.Z build/DotFolio-X.Y.Z.zip --title "DotFolio X.Y.Z" --notes-file <notes.md>
+   gh release create vX.Y.Z build/DOTFOLIO-X.Y.Z.zip --title "DOTFOLIO X.Y.Z" --notes-file <notes.md>
    ```
 8. **Check**: an older build’s *Check for Updates…* now offers X.Y.Z.
 
@@ -75,12 +77,12 @@ Never report a UI change as done from reading code alone. Before ending the turn
 1. Build succeeds and `swift test` passes.
 2. Launch the app and **look at every screen/state you touched** (screenshot it and read the image):
    ```bash
-   open -n build/Build/Products/Debug/DotFolio.app
+   open -n build/Build/Products/Debug/DOTFOLIO.app
    # window id of DotFolio, then:
    screencapture -x -o -l <windowID> /tmp/shot.png
    ```
    Check states too: empty, one item, many items, long text, error, dark mode.
 3. Check each screenshot for: overlapping or clipped text, labels wrapping unexpectedly, misaligned rows/columns, uneven heights of tiles in the same row, controls that don't span the width they should, empty gaps, wrong colors in dark mode.
 4. Fix what you find and repeat steps 1–3.
-5. Never `pkill`/`killall` DotFolio: the user is usually running it from Xcode, and killing it shows up there as `Thread 1: signal SIGTERM`. Launch your own copy with `open -n …` and, when done, quit only that copy by its PID (e.g. `pgrep -f "build/Build/Products/Debug/DotFolio.app"` then `kill <pid>`).
+5. Never `pkill`/`killall` DOTFOLIO: the user is usually running it from Xcode, and killing it shows up there as `Thread 1: signal SIGTERM`. Launch your own copy with `open -n …` and, when done, quit only that copy by its PID (e.g. `pgrep -f "build/Build/Products/Debug/DOTFOLIO.app"` then `kill <pid>`).
 6. If you cannot capture the window (Screen Recording permission missing), say so explicitly in the reply, list exactly which screens are unverified, and ask the user for a screenshot. Do not claim the UI is correct.

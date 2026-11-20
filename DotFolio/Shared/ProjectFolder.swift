@@ -20,7 +20,7 @@ enum ProjectFolder {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         panel.prompt = "Choose"
-        panel.message = "Choose the local folder of “\(project.name)”. DotFolio writes .env files here when you export."
+        panel.message = "Choose the local folder of “\(project.name)”. DOTFOLIO writes .env files here when you export."
         guard panel.runModal() == .OK, let url = panel.url else { return nil }
         project.localFolderBookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
         return url

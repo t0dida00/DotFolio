@@ -17,7 +17,7 @@ struct DotFolioApp: App {
         } catch {
             // Metadata store unreadable: fail loudly rather than silently starting empty
             // (an empty store would look like data loss to the user).
-            fatalError("Could not open the DotFolio database: \(error)")
+            fatalError("Could not open the DOTFOLIO database: \(error)")
         }
     }
 
@@ -47,7 +47,7 @@ struct DotFolioApp: App {
             // scene yet, so an .appSettings anchor may not exist).
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…", action: updates.checkForUpdates)
-                Button("What’s New in DotFolio") { updates.isShowingWhatsNew = true }
+                Button("What’s New in DOTFOLIO") { updates.isShowingWhatsNew = true }
                 Divider()
                 Button("Verify Data…") { navigation.isVerifyingData = true }
                 Button("Erase All Data…") { navigation.isConfirmingErase = true }

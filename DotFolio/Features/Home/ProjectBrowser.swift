@@ -39,6 +39,9 @@ struct ProjectBrowser: View {
     /// Rows highlighted in the list. ⌘-click / ⇧-click / ⌘A select several
     /// for bulk delete; a single selected row becomes the active tab.
     @State private var listSelection: Set<PersistentIdentifier> = []
+    /// Where a ⇧-click range starts (the last plain or ⌘ click).
+    @State private var listAnchor: PersistentIdentifier?
+    @FocusState private var listFocused: Bool
     @State private var projectsPendingDeletion: [Project] = []
     @State private var deleteError: String?
     @FocusState private var searchFocused: Bool
@@ -291,7 +294,7 @@ struct ProjectBrowser: View {
         VStack(spacing: DS.Space.s) {
             AppMark(size: 64)
                 .padding(.bottom, DS.Space.xs)
-            Text("DotFolio")
+            Text("DOTFOLIO")
                 .font(.title3.weight(.semibold))
             Text("Every .env, safe in your Keychain.")
                 .font(.callout)
@@ -411,23 +414,38 @@ struct ProjectBrowser: View {
         if isSearching && rows.isEmpty {
             ContentUnavailableView.search(text: query)
         } else {
-            List(selection: $listSelection) {
+            let order = rows.map(\.project.persistentModelID)
+            List {
                 ForEach(rows, id: \.project.id) { row in
+                    let id = row.project.persistentModelID
                     ProjectListRow(project: row.project, match: row.match)
-                        .tag(row.project.persistentModelID)
+                        .sidebarRow(isSelected: listSelection.contains(id)) {
+                            // A click opens the project as a tab; ⌘/⇧ pick several.
+                            listSelection = SidebarSelection.click(id, selection: listSelection, anchor: listAnchor, order: order)
+                            if !NSEvent.modifierFlags.contains(.shift) { listAnchor = id }
+                            listFocused = true
+                        }
+                        // Right-click acts on the selection when the row is part
+                        // of it, otherwise on that row alone (like Finder).
+                        .contextMenu {
+                            let picked = listSelection.contains(id) ? projects(for: listSelection, in: rows) : [row.project]
+                            if picked.count == 1, let project = picked.first {
+                                Button("Delete Project…", role: .destructive) { projectsPendingDeletion = [project] }
+                            } else if picked.count > 1 {
+                                Button("Open \(picked.count) in Tabs") { openInTabs(picked) }
+                                Divider()
+                                Button("Delete \(picked.count) Projects…", role: .destructive) { projectsPendingDeletion = picked }
+                            }
+                        }
                 }
             }
             .listStyle(.inset)
             .scrollContentBackground(.hidden)
-            // Right-click menu. A click opens the project as a tab.
-            .contextMenu(forSelectionType: PersistentIdentifier.self) { ids in
-                let picked = projects(for: ids, in: rows)
-                if picked.count == 1, let project = picked.first {
-                    Button("Delete Project…", role: .destructive) { projectsPendingDeletion = [project] }
-                } else if picked.count > 1 {
-                    Button("Open \(picked.count) in Tabs") { openInTabs(picked) }
-                    Divider()
-                    Button("Delete \(picked.count) Projects…", role: .destructive) { projectsPendingDeletion = picked }
+            .sidebarKeyboard(focused: $listFocused) { step in
+                let current = listSelection.count == 1 ? listSelection.first : selection
+                if let next = SidebarSelection.neighbor(of: current, in: order, step: step) {
+                    listSelection = [next]
+                    listAnchor = next
                 }
             }
             .onDeleteCommand {

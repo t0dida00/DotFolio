@@ -1,8 +1,8 @@
-# DotFolio
+# DOTFOLIO
 
 A native macOS app for keeping every project's `.env` variables in one place — with the values locked in your Keychain, never on disk.
 
-DotFolio is a portfolio of your projects and their environments (development, staging, production…). For each variable it records the name, the service it belongs to (Firebase, Stripe, a database…), the account it was created with, and a link to where you manage it. The secret value itself lives only in the macOS Keychain and needs Touch ID or your Mac password to reveal or copy.
+DOTFOLIO is a portfolio of your projects and their environments (development, staging, production…). For each variable it records the name, the service it belongs to (Firebase, Stripe, a database…), the account it was created with, and a link to where you manage it. The secret value itself lives only in the macOS Keychain and needs Touch ID or your Mac password to reveal or copy.
 
 > **Status:** early development (v0.1.0). GitHub import works; GitLab sign-in and `.env` export are coming next.
 
@@ -89,7 +89,7 @@ Every update merged into `main` is shipped as a new release, so **Check for Upda
 1. Bump `MARKETING_VERSION` (semver) and `CURRENT_PROJECT_VERSION` in `project.yml`.
 2. Add the highlights to `DotFolio/App/ReleaseNotes.swift` (*What’s New* in the app).
 3. Commit `Release vX.Y.Z`, tag `vX.Y.Z`, push `main` and the tag.
-4. Publish a GitHub Release for the tag with the notes and the zipped `DotFolio.app`.
+4. Publish a GitHub Release for the tag with the notes and the zipped `DOTFOLIO.app`.
 
 The full checklist with commands is in [CLAUDE.md](CLAUDE.md#releases-every-update-to-main-ships-a-release).
 

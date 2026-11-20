@@ -42,9 +42,11 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.dotfolio.DotFolio
         # Brand violet (Resources/Assets.xcassets/AccentColor) instead of the system blue.
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        PRODUCT_NAME: DotFolio
+        # Shown everywhere as DOTFOLIO (Finder, Dock, menu bar). Code, scheme
+        # and bundle ID keep "DotFolio", so data and Keychain items carry over.
+        PRODUCT_NAME: DOTFOLIO
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: DotFolio
+        INFOPLIST_KEY_CFBundleDisplayName: DOTFOLIO
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         CODE_SIGN_ENTITLEMENTS: DotFolio/Resources/DotFolio.entitlements
         ENABLE_HARDENED_RUNTIME: YES

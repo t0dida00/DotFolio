@@ -111,6 +111,7 @@ struct AccountList: View {
     let query: String
     @Binding var selection: PersistentIdentifier?
     let onDelete: (Account) -> Void
+    @FocusState private var listFocused: Bool
 
     private var filtered: [Account] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -131,7 +132,7 @@ struct AccountList: View {
         } else if rows.isEmpty {
             ContentUnavailableView.search(text: query)
         } else {
-            List(selection: $selection) {
+            List {
                 ForEach(rows) { account in
                     HStack(spacing: DS.Space.s) {
                         AccountTile(services: account.services)
@@ -142,7 +143,10 @@ struct AccountList: View {
                     }
                     .padding(.vertical, DS.Space.xs)
                     .clickableCursor()
-                    .tag(account.persistentModelID)
+                    .sidebarRow(isSelected: selection == account.persistentModelID) {
+                        selection = account.persistentModelID
+                        listFocused = true
+                    }
                     .contextMenu {
                         Button("Delete Account…", role: .destructive) { onDelete(account) }
                     }
@@ -150,6 +154,9 @@ struct AccountList: View {
             }
             .listStyle(.inset)
             .scrollContentBackground(.hidden)
+            .sidebarKeyboard(focused: $listFocused) { step in
+                selection = SidebarSelection.neighbor(of: selection, in: rows.map(\.persistentModelID), step: step) ?? selection
+            }
         }
     }
 

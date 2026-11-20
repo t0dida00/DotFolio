@@ -42,7 +42,7 @@ struct VerifyDataSheet: View {
                           "e.g. “Database” on an account. Repair moves them to the Service column.")
                     issue(report.duplicateKeys.count, "Duplicate variable names",
                           report.duplicateKeys.prefix(3).map { "\($0.key) in \($0.project) · \($0.environment)" }.joined(separator: ", ")
-                            + " — rename or delete one yourself; DotFolio won’t guess which is right.",
+                            + " — rename or delete one yourself; DOTFOLIO won’t guess which is right.",
                           fixable: false)
                 }
             }

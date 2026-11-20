@@ -29,7 +29,7 @@ struct RootView: View {
         .sheet(isPresented: Binding(get: { updates.isShowingWhatsNew }, set: { updates.isShowingWhatsNew = $0 })) {
             WhatsNewSheet(center: updates)
         }
-        .confirmationDialog("Erase all DotFolio data?", isPresented: $navigation.isConfirmingErase) {
+        .confirmationDialog("Erase all DOTFOLIO data?", isPresented: $navigation.isConfirmingErase) {
             Button("Erase All Data", role: .destructive, action: eraseAll)
         } message: {
             Text("This permanently deletes every project, account and variable, and removes all stored values and sign-in tokens from your Keychain. This can’t be undone.")
@@ -55,7 +55,7 @@ struct RootView: View {
     private func signOutMessage(_ plan: ConnectionFlowModel.SignOutPlan) -> String {
         let account = plan.login.isEmpty ? "this account" : "@\(plan.login)"
         guard !plan.projects.isEmpty else {
-            return "DotFolio forgets \(account). No projects came from it."
+            return "DOTFOLIO forgets \(account). No projects came from it."
         }
         let values = plan.projects.flatMap(\.allVariables).filter(\.hasValue).count
         let names = plan.projects.prefix(3).map(\.name).joined(separator: ", ") + (plan.projects.count > 3 ? "…" : "")

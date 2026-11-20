@@ -343,7 +343,7 @@ private struct RepoPickerStep: View {
             HStack(alignment: .firstTextBaseline) {
                 StepHeader(
                     title: "Import repositories",
-                    subtitle: "\(model.account.map { "Signed in as @\($0.login) · " } ?? "")\(model.repos.count) repositories DotFolio can read"
+                    subtitle: "\(model.account.map { "Signed in as @\($0.login) · " } ?? "")\(model.repos.count) repositories DOTFOLIO can read"
                 )
                 Spacer()
                 Button("Refresh", systemImage: "arrow.clockwise", action: model.refreshRepos)
@@ -417,7 +417,7 @@ private struct RepoPickerStep: View {
     private var installHint: some View {
         HStack(spacing: DS.Space.s) {
             Image(systemName: "info.circle").foregroundStyle(.secondary)
-            Text("Missing a repo? DotFolio only sees repos where its GitHub App is installed.")
+            Text("Missing a repo? DOTFOLIO only sees repos where its GitHub App is installed.")
                 .foregroundStyle(.secondary)
             if let url = GitHubConfig.installURL {
                 Link("Manage access", destination: url).clickableCursor()
@@ -429,7 +429,7 @@ private struct RepoPickerStep: View {
     private var noRepos: some View {
         VStack(alignment: .leading, spacing: DS.Space.s) {
             Text("No repositories yet").font(DS.Font.sectionTitle)
-            Text("Install DotFolio’s GitHub App on your account or organization and choose which repos it can read, then refresh.")
+            Text("Install DOTFOLIO’s GitHub App on your account or organization and choose which repos it can read, then refresh.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let url = GitHubConfig.installURL {
