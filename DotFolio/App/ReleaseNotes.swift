@@ -7,6 +7,24 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.4.0", highlights: [
+            ("wand.and.stars", "Smart sources",
+             "New variables get their Service and Provider from the name — DATABASE_URL is Database, FIREBASE_AUTH_DOMAIN is Auth on Firebase, NUXT_HF_MODEL is AI on Hugging Face — or from what you chose for the same name before. Suggest Sources… fills the empty ones you already have, after you check them."),
+            ("doc.plaintext", "See it as a .env file",
+             "Switch a project between Table and File. File shows one line per variable, KEY=value #Service/Provider/Account/Link, and Export .env writes exactly that."),
+            ("lock", "Locked until you edit",
+             "Tables open read-only: double-click a row to copy its value. Turn on Edit to change names, values and sources, or to edit the whole file as text. Show Values reveals every value at once."),
+            ("text.bubble", "Source comments in .env",
+             "Write #Service/Provider/Account/Link after a value — e.g. KEY='…' #AI/OpenAI/me@example.com — and importing fills those columns."),
+            ("books.vertical", "One-step Library import",
+             "Dropping .env files on the Library no longer asks for a provider: each key goes under the provider in its comment, the rest under Other."),
+            ("person.crop.circle", "Every key of an account",
+             "An account’s Used by now lists each key that uses it — per project and environment, plus the Library — in the same editable table as a project."),
+            ("textformat.size.larger", "DOTFOLIO",
+             "The app now goes by DOTFOLIO everywhere. Your projects, accounts and Keychain values carry over."),
+            ("list.bullet.rectangle", "Calmer selection",
+             "Projects, Accounts and Libraries mark the selected row in gray instead of a bright fill. ⌘-click and ⇧-click still pick several projects."),
+        ]),
         Entry(version: "0.3.0", highlights: [
             ("square.and.arrow.down", "Import .env files",
              "New Project: pick or drop .env files and the table fills itself. The file name picks the environment — .env.production goes to production, .env and .env.local to development. Example files bring names only."),
