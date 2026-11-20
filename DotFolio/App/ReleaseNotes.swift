@@ -7,6 +7,12 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.4.1", highlights: [
+            ("number", "Variables counted once",
+             "A name in development, staging and production is one variable. The project page and the Overview — totals, missing values, no source, providers, services, accounts, Needs attention and Recently updated — now count it once, so the numbers agree."),
+            ("lock.open", "Smoother Edit switch",
+             "Turning Edit on or off no longer stutters on long tables."),
+        ]),
         Entry(version: "0.4.0", highlights: [
             ("wand.and.stars", "Smart sources",
              "New variables get their Service and Provider from the name — DATABASE_URL is Database, FIREBASE_AUTH_DOMAIN is Auth on Firebase, NUXT_HF_MODEL is AI on Hugging Face — or from what you chose for the same name before. Suggest Sources… fills the empty ones you already have, after you check them."),
