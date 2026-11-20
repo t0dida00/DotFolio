@@ -424,19 +424,41 @@ struct CommitField: View {
 }
 
 /// The Edit switch above a table: off keeps it locked (read-only).
+///
+/// Flipping it rebuilds every cell of the table (plain text ↔ fields and
+/// menus), which is too much work for the frame the knob animates in. So the
+/// knob has its own state and animates at once; the table follows after the
+/// animation, without animating itself.
 struct EditSwitch: View {
     @Binding var isOn: Bool
+    @State private var knob = false
+
+    /// About the length of the switch's own animation.
+    private static let settle: Duration = .milliseconds(220)
 
     var body: some View {
-        Toggle(isOn: $isOn) {
-            Label("Edit", systemImage: isOn ? "lock.open" : "lock")
+        Toggle(isOn: $knob) {
+            Label("Edit", systemImage: knob ? "lock.open" : "lock")
                 .contentTransition(.symbolEffect(.replace))
-                .foregroundStyle(isOn ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                .foregroundStyle(knob ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
         }
         .toggleStyle(.switch)
         .controlSize(.small)
-        .help(isOn ? "Lock the table again" : "Unlock to change names, values and sources")
+        .help(knob ? "Lock the table again" : "Unlock to change names, values and sources")
         .clickableCursor()
+        .onAppear { knob = isOn }
+        // Locked from outside (another project, screen lock…): follow at once.
+        .onChange(of: isOn) { _, new in if knob != new { knob = new } }
+        .onChange(of: knob) { _, new in
+            guard new != isOn else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: Self.settle)
+                guard knob == new, isOn != new else { return } // flipped back meanwhile
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { isOn = new }
+            }
+        }
     }
 }
 
