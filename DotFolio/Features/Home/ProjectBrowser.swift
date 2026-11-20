@@ -48,61 +48,63 @@ struct ProjectBrowser: View {
 
     private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
+    /// Width of the list column (brand, mode picker, list, footer).
+    static let sidebarWidth: CGFloat = 320
+
     var body: some View {
         // Library groups are built once per redraw, and only in that mode.
         let library = mode == .libraries ? libraryGroups() : (all: [], shown: [])
         VStack(spacing: 0) {
             toolbar
             Divider()
-            GeometryReader { proxy in
-                HStack(spacing: 0) {
-                    VStack(spacing: 0) {
-                        brandHeader
-                        Divider()
-                            .padding(.horizontal, DS.Space.m)
-                        Picker("Show", selection: $mode) {
-                            ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .padding(.horizontal, DS.Space.m)
-                        .padding(.vertical, DS.Space.s)
-                        .clickableCursor()
-
-                        switch mode {
-                        case .projects:
-                            projectList
-                                .frame(maxHeight: .infinity)
-                            listFooter
-                        case .accounts:
-                            AccountList(accounts: accounts, query: query, selection: $accountSelection,
-                                        onDelete: { accountPendingDeletion = $0 })
-                                .frame(maxHeight: .infinity)
-                            accountsFooter
-                        case .libraries:
-                            LibraryProviderList(groups: library.all, total: libraryKeys.count,
-                                                selection: $libraryProvider)
-                                .frame(maxHeight: .infinity)
-                            libraryFooter
-                        }
-                    }
-                    .frame(width: proxy.size.width * 0.25)
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    brandHeader
                     Divider()
-                    VStack(spacing: 0) {
-                        switch mode {
-                        case .projects:
-                            if !openTabs.isEmpty {
-                                tabBar
-                            }
-                            detail
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        case .accounts:
-                            accountDetail
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        case .libraries:
-                            LibraryView(groups: library.shown, total: libraryKeys.count, focusRequest: libraryFocusRequest)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.horizontal, DS.Space.m)
+                    Picker("Show", selection: $mode) {
+                        ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .padding(.horizontal, DS.Space.m)
+                    .padding(.vertical, DS.Space.s)
+                    .clickableCursor()
+
+                    switch mode {
+                    case .projects:
+                        projectList
+                            .frame(maxHeight: .infinity)
+                        listFooter
+                    case .accounts:
+                        AccountList(accounts: accounts, query: query, selection: $accountSelection,
+                                    onDelete: { accountPendingDeletion = $0 })
+                            .frame(maxHeight: .infinity)
+                        accountsFooter
+                    case .libraries:
+                        LibraryProviderList(groups: library.all, total: libraryKeys.count,
+                                            selection: $libraryProvider)
+                            .frame(maxHeight: .infinity)
+                        libraryFooter
+                    }
+                }
+                // Fixed width: the list column never stretches or squeezes.
+                .frame(width: Self.sidebarWidth)
+                Divider()
+                VStack(spacing: 0) {
+                    switch mode {
+                    case .projects:
+                        if !openTabs.isEmpty {
+                            tabBar
                         }
+                        detail
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    case .accounts:
+                        accountDetail
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    case .libraries:
+                        LibraryView(groups: library.shown, total: libraryKeys.count, focusRequest: libraryFocusRequest)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
             }
@@ -413,6 +415,13 @@ struct ProjectBrowser: View {
         let rows = results
         if isSearching && rows.isEmpty {
             ContentUnavailableView.search(text: query)
+        } else if projects.isEmpty {
+            ContentUnavailableView(
+                "No projects",
+                systemImage: "folder",
+                description: Text(isSignedIn ? "Import a repo from GitHub or create one with New Project."
+                                             : "Create one with New Project.")
+            )
         } else {
             let order = rows.map(\.project.persistentModelID)
             List {
@@ -674,7 +683,7 @@ private struct ProjectListRow: View {
 
     var body: some View {
         HStack(spacing: DS.Space.s) {
-            ProjectTile(provider: project.provider, size: 28)
+            ProjectTile(provider: project.provider, size: 34)
             VStack(alignment: .leading, spacing: DS.Space.xxs) {
                 Text(project.name).lineLimit(1)
                 Text(subtitle)

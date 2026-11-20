@@ -41,3 +41,28 @@ struct EnvFileImportTests {
         }
     }
 }
+
+struct EnvSourceTests {
+    @Test func parsesInlineCommentsAfterQuotedAndPlainValues() {
+        let entries = EnvParser.parse("""
+        A='this is a test' #AI/JEV/me@gmail.com
+        B="x # not a comment" # AI / OpenAI
+        C=plain #Database/Supabase/me/https://supabase.com/dashboard/project/abc
+        D=no#comment
+        E= #Cache/Redis
+        """)
+        #expect(entries.map(\.value) == ["this is a test", "x # not a comment", "plain", "no#comment", ""])
+        #expect(entries[0].source == EnvSource(service: "AI", provider: "JEV", account: "me@gmail.com"))
+        #expect(entries[1].source == EnvSource(service: "AI", provider: "OpenAI"))
+        #expect(entries[2].source.link == "https://supabase.com/dashboard/project/abc")
+        #expect(entries[3].source.isEmpty)
+        #expect(entries[4].source == EnvSource(service: "Cache", provider: "Redis"))
+    }
+
+    @Test func emptyFieldsAndPlainNotes() {
+        #expect(EnvSource(comment: "//me@x.com") == EnvSource(account: "me@x.com"))
+        #expect(EnvSource(comment: "AI/") == EnvSource(service: "AI"))
+        // A note without "/" is not source information.
+        #expect(EnvSource(comment: "used by the local dev server").isEmpty)
+    }
+}

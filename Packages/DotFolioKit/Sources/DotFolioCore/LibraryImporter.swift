@@ -4,12 +4,16 @@ import DotFolioSecurity
 import Foundation
 import SwiftData
 
-/// Adds the keys of a `.env` file to the Library under one provider.
+/// Adds the keys of a `.env` file to the Library. Each line says where it
+/// belongs with a `#Service/Provider/Account/Link` comment; keys without a
+/// provider go to the "Other" group (empty provider).
 public enum LibraryImporter {
     public struct Result: Equatable, Sendable {
         public var added: Int
-        /// Names already in the Library for this provider; never overwritten.
+        /// Names already in the Library under the same provider; never overwritten.
         public var skipped: [String]
+        /// Keys whose link wasn't a web address; imported without it.
+        public var invalidLinks: [String] = []
     }
 
     /// All or nothing. Each value goes to the secret store before its key is
@@ -19,27 +23,33 @@ public enum LibraryImporter {
     @MainActor
     @discardableResult
     public static func importKeys(
-        _ entries: [EnvEntry], provider: String, category: String = "", account: String = "", includeValues: Bool = true,
-        context: ModelContext, secrets: any SecretStore
+        _ entries: [EnvEntry], includeValues: Bool = true, context: ModelContext, secrets: any SecretStore
     ) throws(VariableEditor.Failure) -> Result {
         var added: [Variable] = []
-        var skipped: [String] = []
+        var result = Result(added: 0, skipped: [])
         for entry in entries {
+            let source = entry.source
+            var link = source.link
+            if !link.isEmpty && InputValidation.webURL(link) == nil {
+                result.invalidLinks.append(entry.key)
+                link = ""
+            }
             do {
                 let key = try VariableEditor.addToLibrary(
-                    key: entry.key, value: includeValues ? entry.value : "", category: category,
-                    provider: provider, account: account, context: context, secrets: secrets
+                    key: entry.key, value: includeValues ? entry.value : "", category: source.service,
+                    provider: source.provider, account: source.account, link: link, context: context, secrets: secrets
                 )
                 added.append(key)
             } catch .duplicateKey(let name) {
-                skipped.append(name)
+                result.skipped.append(name)
             } catch .invalidKey {
-                skipped.append(entry.key)
+                result.skipped.append(entry.key)
             } catch {
                 for key in added { try? VariableEditor.delete(key, context: context, secrets: secrets) }
                 throw error
             }
         }
-        return Result(added: added.count, skipped: skipped)
+        result.added = added.count
+        return result
     }
 }

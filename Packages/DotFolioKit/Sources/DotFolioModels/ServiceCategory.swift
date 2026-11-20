@@ -46,6 +46,8 @@ public enum ServiceCategory: String, CaseIterable, Identifiable, Sendable {
 
     /// Best guess from the provider name, used when no category was chosen.
     public static func suggested(forProvider provider: String) -> ServiceCategory? {
+        // A known provider (see ProviderCatalog) first, then name fragments.
+        if let entry = ProviderCatalog.entry(named: provider) { return entry.service }
         let p = provider.lowercased()
         let table: [(String, ServiceCategory)] = [
             ("redis", .cache), ("upstash", .cache), ("memcache", .cache),

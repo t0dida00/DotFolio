@@ -105,14 +105,16 @@ public struct ProjectDraft {
     public struct ImportResult: Equatable, Sendable {
         /// New rows.
         public var added = 0
-        /// Existing rows whose empty value was filled from the file.
+        /// Existing rows whose empty value or source fields were filled from the file.
         public var filled = 0
-        /// Names already in the table with a value; what was typed is kept.
+        /// Names already in the table with nothing left to fill; what was typed is kept.
         public var skipped: [String] = []
     }
 
-    /// Adds a file's entries to one environment's table. Names already there
-    /// are never overwritten: only an empty value is filled in.
+    /// Adds a file's entries to one environment's table. Service, provider,
+    /// account and link come from each line's `#Service/Provider/Account/Link`
+    /// comment. Names already there are never overwritten: only empty cells
+    /// are filled in.
     /// - Parameter includeValues: false for templates (`.env.example`), whose
     ///   values are placeholders.
     @discardableResult
@@ -121,15 +123,23 @@ public struct ProjectDraft {
         var table = (rowsByEnvironment[environment] ?? []).filter { !$0.isBlank }
         for entry in entries {
             let value = includeValues ? entry.value : ""
+            let source = entry.source
             if let i = table.firstIndex(where: { $0.key.trimmingCharacters(in: .whitespaces) == entry.key }) {
-                if table[i].value.isEmpty && !value.isEmpty {
-                    table[i].value = value
-                    result.filled += 1
-                } else {
-                    result.skipped.append(entry.key)
+                var changed = false
+                func fill(_ field: WritableKeyPath<EnvDraftRow, String>, _ new: String) {
+                    guard table[i][keyPath: field].trimmingCharacters(in: .whitespaces).isEmpty, !new.isEmpty else { return }
+                    table[i][keyPath: field] = new
+                    changed = true
                 }
+                fill(\.value, value)
+                fill(\.category, source.service)
+                fill(\.service, source.provider)
+                fill(\.account, source.account)
+                fill(\.link, source.link)
+                if changed { result.filled += 1 } else { result.skipped.append(entry.key) }
             } else {
-                table.append(EnvDraftRow(key: entry.key, value: value))
+                table.append(EnvDraftRow(key: entry.key, value: value, category: source.service,
+                                         service: source.provider, account: source.account, link: source.link))
                 result.added += 1
             }
         }
@@ -177,11 +187,12 @@ public enum ProjectCreator {
             link: InputValidation.webURL(draft.link),
             in: context
         )
+        let history = SourceHistory(context: context)
         for table in tables {
             let environment = project.sortedEnvironments.first { $0.name == table.environment }
                 ?? project.sortedEnvironments.first
             for row in table.rows {
-                insert(row, into: environment, refs: refs, context: context)
+                insert(row, into: environment, refs: refs, history: history, context: context)
             }
         }
         project.lastOpenedAt = .now
@@ -189,7 +200,8 @@ public enum ProjectCreator {
     }
 
     @MainActor
-    private static func insert(_ row: EnvDraftRow, into environment: ProjectEnvironment?, refs: [UUID: UUID], context: ModelContext) {
+    private static func insert(_ row: EnvDraftRow, into environment: ProjectEnvironment?, refs: [UUID: UUID],
+                               history: SourceHistory, context: ModelContext) {
         let variable = Variable(key: row.key.trimmingCharacters(in: .whitespaces), environment: environment)
         variable.sourceURL = InputValidation.webURL(row.link)
         variable.serviceLabel = row.service.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -200,5 +212,6 @@ public enum ProjectCreator {
         }
         context.insert(variable)
         variable.account = VariableEditor.findOrCreateAccount(login: row.account, service: variable.serviceLabel, context: context)
+        VariableEditor.fillMissingSource(variable, value: row.value, context: context, history: history)
     }
 }

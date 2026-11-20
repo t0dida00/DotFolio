@@ -14,12 +14,16 @@ struct EnvExportTests {
         let secrets = InMemorySecretStore()
         let project = Project.create(name: "Shop", in: context)
         let prod = project.sortedEnvironments.last!
-        try VariableEditor.add(key: "API_KEY", value: "sk live", to: prod, context: context, secrets: secrets)
+        try VariableEditor.add(key: "API_KEY", value: "sk live", category: "AI", service: "OpenAI",
+                               to: prod, context: context, secrets: secrets)
         try VariableEditor.add(key: "EMPTY", to: prod, context: context, secrets: secrets)
+        prod.sortedVariables[0].notes = "Notes stay out of the file"
 
         let out = try EnvExport.build(prod, secrets: secrets, authContext: LAContext())
         #expect(out.missing == ["EMPTY"])
-        #expect(out.text.contains("Never commit") || out.text.contains("never commit"))
+        // Same text as the File view: no header, no notes, source inline.
+        #expect(out.text == "API_KEY=\"sk live\" #AI/OpenAI\nEMPTY=\n")
+        #expect(out.text == EnvFileEdit.text(for: prod.sortedVariables, values: [prod.sortedVariables[0].id: "sk live"]))
         let parsed = EnvParser.parse(out.text)
         #expect(parsed.map(\.key) == ["API_KEY", "EMPTY"])
         #expect(parsed[0].value == "sk live")

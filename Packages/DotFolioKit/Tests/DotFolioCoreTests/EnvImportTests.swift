@@ -99,29 +99,67 @@ struct EnvImportTests {
         #expect(try IntegrityCheck.run(context: context, secrets: secrets).isClean)
     }
 
+    @Test func importFillsColumnsFromSourceComments() {
+        var draft = ProjectDraft()
+        draft.rows = [EnvDraftRow(key: "B", value: "typed")]
+        let entries = EnvParser.parse("""
+        A='one' #AI/OpenAI/me@x.com/https://platform.openai.com/api-keys
+        B=two #Database/Supabase
+        C=3
+        """)
+        let result = draft.importEntries(entries, into: "development", includeValues: true)
+
+        #expect(result == .init(added: 2, filled: 1, skipped: []))
+        let a = draft.filledRows.first { $0.key == "A" }
+        #expect(a?.category == "AI" && a?.service == "OpenAI" && a?.account == "me@x.com")
+        #expect(a?.link == "https://platform.openai.com/api-keys")
+        let b = draft.filledRows.first { $0.key == "B" }
+        #expect(b?.value == "typed" && b?.category == "Database" && b?.service == "Supabase")
+        let c = draft.filledRows.first { $0.key == "C" }
+        #expect(c?.service == "" && c?.category == "")
+    }
+
     // MARK: Library
 
-    @Test func libraryImportAddsUnderProviderAndSkipsExisting() throws {
-        let secrets = InMemorySecretStore()
-        try VariableEditor.addToLibrary(key: "API_KEY", value: "old", provider: "Stripe", context: context, secrets: secrets)
+    private let commented = EnvParser.parse("""
+    test='this is a test' #AI/JEV/me@gmail.com
+    test2='this is another test' #AI/ClaudeCode/me@gmail.com/https://console.anthropic.com
+    PLAIN=value
+    BAD_LINK=x #AI/JEV//not a link
+    """)
 
-        let result = try LibraryImporter.importKeys(file, provider: "stripe", category: "Payments",
-                                                    context: context, secrets: secrets)
-        #expect(result == .init(added: 2, skipped: ["API_KEY"]))
-        let keys = Library.keys(provider: "Stripe", context: context)
-        #expect(Set(keys.map(\.key)) == ["API_KEY", "DB_URL", "EMPTY"])
-        let old = try #require(keys.first { $0.key == "API_KEY" })
-        #expect(try secrets.string(for: old.secretRef.uuidString) == "old") // never overwritten
-        let db = try #require(keys.first { $0.key == "DB_URL" })
-        #expect(try secrets.string(for: db.secretRef.uuidString) == "postgres://x")
-        #expect(keys.first { $0.key == "EMPTY" }?.hasValue == false)
+    @Test func libraryImportUsesEachLinesProviderAndOther() throws {
+        let secrets = InMemorySecretStore()
+        let result = try LibraryImporter.importKeys(commented, context: context, secrets: secrets)
+
+        #expect(result.added == 4)
+        #expect(result.invalidLinks == ["BAD_LINK"])
+        #expect(Library.keys(provider: "JEV", context: context).map(\.key).sorted() == ["BAD_LINK", "test"])
+        let claude = try #require(Library.keys(provider: "ClaudeCode", context: context).first)
+        #expect(claude.key == "test2" && claude.serviceCategory == "AI")
+        #expect(claude.account?.login == "me@gmail.com")
+        #expect(claude.sourceURL?.absoluteString == "https://console.anthropic.com")
+        #expect(try secrets.string(for: claude.secretRef.uuidString) == "this is another test")
+        // No provider → the "Other" group (empty provider).
+        #expect(Library.keys(provider: "", context: context).map(\.key) == ["PLAIN"])
+        // One login, both providers.
+        #expect(Set(claude.account?.services ?? []) == ["JEV", "ClaudeCode"])
         #expect(try IntegrityCheck.run(context: context, secrets: secrets).isClean)
+    }
+
+    @Test func libraryImportSkipsExistingNamesPerProvider() throws {
+        let secrets = InMemorySecretStore()
+        let old = try VariableEditor.addToLibrary(key: "test", value: "old", provider: "jev", context: context, secrets: secrets)
+        let result = try LibraryImporter.importKeys(commented, context: context, secrets: secrets)
+
+        #expect(result.skipped == ["test"])
+        #expect(try secrets.string(for: old.secretRef.uuidString) == "old") // never overwritten
     }
 
     @Test func libraryImportIsAllOrNothing() throws {
         let secrets = FailOnWriteStore(failOnWrite: 2)
         #expect(throws: VariableEditor.Failure.self) {
-            try LibraryImporter.importKeys(file, provider: "Stripe", context: context, secrets: secrets)
+            try LibraryImporter.importKeys(file, context: context, secrets: secrets)
         }
         #expect(Library.keys(context: context).isEmpty)
         #expect(try secrets.allRefs().isEmpty)
@@ -129,7 +167,7 @@ struct EnvImportTests {
 
     @Test func libraryTemplateImportHasNoValues() throws {
         let secrets = InMemorySecretStore()
-        try LibraryImporter.importKeys(file, provider: "Stripe", includeValues: false, context: context, secrets: secrets)
+        try LibraryImporter.importKeys(file, includeValues: false, context: context, secrets: secrets)
         #expect(Library.keys(context: context).allSatisfy { !$0.hasValue })
         #expect(try secrets.allRefs().isEmpty)
     }

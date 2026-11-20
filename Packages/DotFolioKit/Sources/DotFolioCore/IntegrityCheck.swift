@@ -59,7 +59,7 @@ public enum IntegrityCheck {
         for v in variables where v.inLibrary {
             let id = "\(v.serviceLabel.lowercased())|\(v.key)"
             if !seenLibrary.insert(id).inserted {
-                report.duplicateKeys.append(.init(project: "Library", environment: v.serviceLabel.isEmpty ? "No provider" : v.serviceLabel, key: v.key))
+                report.duplicateKeys.append(.init(project: "Library", environment: v.serviceLabel.isEmpty ? "Other" : v.serviceLabel, key: v.key))
             }
         }
         report.duplicateKeys = Array(Set(report.duplicateKeys)).sorted { ($0.project, $0.environment, $0.key) < ($1.project, $1.environment, $1.key) }

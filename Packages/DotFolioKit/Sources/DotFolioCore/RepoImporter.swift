@@ -47,12 +47,15 @@ public enum RepoImporter {
             let entries = EnvParser.parse(envExample)
             project.envExampleKeys = entries.map(\.key)
             project.envExampleSHA = envExampleSHA
+            let history = SourceHistory(context: context)
             for environment in project.sortedEnvironments {
                 let existing = Set((environment.variables ?? []).map(\.key))
                 for entry in entries where !existing.contains(entry.key) {
                     let variable = Variable(key: entry.key, notes: entry.comment, environment: nil)
                     context.insert(variable)
                     variable.environment = environment
+                    // Example values are placeholders, but their format still hints at the source.
+                    VariableEditor.fillMissingSource(variable, value: entry.value, context: context, history: history)
                 }
             }
         }

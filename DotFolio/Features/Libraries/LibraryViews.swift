@@ -1,16 +1,17 @@
 import DotFolioCore
+import DotFolioEnv
 import DotFolioModels
 import DotFolioSecurity
 import LocalAuthentication
 import SwiftData
 import SwiftUI
 
-/// Library keys grouped by provider ("" = no provider).
+/// Library keys grouped by provider ("" = no provider, shown as "Other").
 struct LibraryGroup: Identifiable {
     let provider: String
     let keys: [Variable]
     var id: String { provider.lowercased() }
-    var title: String { provider.isEmpty ? "No provider" : provider }
+    var title: String { provider.isEmpty ? "Other" : provider }
 
     static func make(from keys: [Variable]) -> [LibraryGroup] {
         let byProvider = Dictionary(grouping: keys) { $0.serviceLabel.lowercased() }
@@ -20,7 +21,7 @@ struct LibraryGroup: Identifiable {
                              keys: keys.sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending })
             }
             .sorted { a, b in
-                // "No provider" last, the rest alphabetically.
+                // "Other" last, the rest alphabetically.
                 if a.provider.isEmpty != b.provider.isEmpty { return !a.provider.isEmpty }
                 return a.provider.localizedStandardCompare(b.provider) == .orderedAscending
             }
@@ -95,9 +96,11 @@ struct LibraryView: View {
     /// Bumped by the left column's "New Key" button to focus the add card.
     let focusRequest: Int
 
+    @Environment(\.modelContext) private var context
+    @Environment(\.secretStore) private var secrets
+
     @State private var expanded: Set<String> = []
     @FocusState private var addNameFocused: Bool
-    @State private var pendingImport: PendingLibraryImport?
     @State private var importMessage: String?
     @State private var importFailed = false
     @State private var dropTargeted = false
@@ -116,7 +119,7 @@ struct LibraryView: View {
                         }
                         Spacer()
                         Button {
-                            open(EnvFilePicker.choose(message: "Choose .env files. Their keys go to the Library under the provider you pick next."))
+                            open(EnvFilePicker.choose(message: "Choose .env files. A comment like #Service/Provider/Account/Link after a value says where the key belongs; keys without a provider go to Other."))
                         } label: {
                             Label("Import .env…", systemImage: "square.and.arrow.down")
                         }
@@ -179,29 +182,57 @@ struct LibraryView: View {
                     .allowsHitTesting(false)
             }
         }
-        .sheet(item: $pendingImport) { pending in
-            LibraryImportSheet(pending: pending) { summary in
-                importMessage = summary
-                importFailed = false
-            }
-        }
     }
 
-    /// Reads the files, then asks for the provider in the import sheet.
+    /// Reads the files and adds every key straight away: each line's
+    /// `#Service/Provider/Account/Link` comment says where it goes.
     private func open(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
         do {
             let files = try EnvFilePicker.read(urls)
-            guard files.contains(where: { !$0.entries.isEmpty }) else {
+            let entries = Self.merged(files)
+            guard !entries.isEmpty else {
                 importMessage = "No variables found in \(files.map(\.name).joined(separator: ", "))."
                 importFailed = true
                 return
             }
-            pendingImport = PendingLibraryImport(files: files)
+            let result = try LibraryImporter.importKeys(entries, context: context, secrets: secrets)
+            var message = "Imported \(result.added) \(result.added == 1 ? "key" : "keys")."
+            if !result.skipped.isEmpty {
+                message += " Skipped \(result.skipped.count) already there: \(Self.list(result.skipped))."
+            }
+            if !result.invalidLinks.isEmpty {
+                message += " Not a web link, left empty: \(Self.list(result.invalidLinks))."
+            }
+            importMessage = message
+            importFailed = false
+        } catch let failure as VariableEditor.Failure {
+            importMessage = "Nothing was imported. \(failure.message)"
+            importFailed = true
         } catch {
             importMessage = error.localizedDescription
             importFailed = true
         }
+    }
+
+    private static func list(_ names: [String]) -> String {
+        names.prefix(3).joined(separator: ", ") + (names.count > 3 ? "…" : "")
+    }
+
+    /// One list from all files: a name appears once; real values win over
+    /// template placeholders (`.env.example` brings names and comments only),
+    /// and a later file wins over an earlier one.
+    static func merged(_ files: [EnvFilePicker.File]) -> [EnvEntry] {
+        var order: [String] = []
+        var byKey: [String: EnvEntry] = [:]
+        for file in files.sorted(by: { ($0.kind == .template ? 0 : 1) < ($1.kind == .template ? 0 : 1) }) {
+            for var entry in file.entries {
+                if file.kind == .template { entry.value = "" }
+                if byKey[entry.key] == nil { order.append(entry.key) }
+                byKey[entry.key] = entry
+            }
+        }
+        return order.compactMap { byKey[$0] }
     }
 }
 
@@ -220,6 +251,7 @@ private struct LibrarySection: View {
     @State private var errorMessage: String?
     @State private var notice: String?
     @State private var hovering = false
+    @State private var showsValues = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -231,6 +263,7 @@ private struct LibrarySection: View {
                         selection: $selection,
                         pendingDeletion: $pendingDeletion,
                         errorMessage: $errorMessage,
+                        showsValues: $showsValues,
                         emptyText: "No keys",
                         extraMenu: { v in AnyView(addToProjectMenu(v)) }
                     )
@@ -257,6 +290,9 @@ private struct LibrarySection: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
             Spacer()
+            if isExpanded {
+                ShowValuesButton(isOn: $showsValues, isEnabled: group.keys.contains(where: \.hasValue))
+            }
         }
         .padding(.horizontal, DS.Space.m)
         .padding(.vertical, DS.Space.s)

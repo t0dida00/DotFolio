@@ -148,3 +148,48 @@ private func uniqued<T: PersistentModel>(_ items: [T]) -> [T] {
     var seen = Set<PersistentIdentifier>()
     return items.filter { seen.insert($0.persistentModelID).inserted }
 }
+
+/// Every key that uses an account (directly or through one of its provider
+/// projects): per project (name order) and environment (environment order),
+/// then the Library keys. Keys are sorted by name.
+@MainActor
+public struct AccountKeys {
+    public struct EnvironmentKeys: Identifiable {
+        public let environment: ProjectEnvironment
+        public let keys: [Variable]
+        public var id: PersistentIdentifier { environment.persistentModelID }
+    }
+
+    public struct ProjectKeys: Identifiable {
+        public let project: Project
+        public let environments: [EnvironmentKeys]
+        public var id: PersistentIdentifier { project.persistentModelID }
+        public var count: Int { environments.reduce(0) { $0 + $1.keys.count } }
+    }
+
+    public let projects: [ProjectKeys]
+    public let library: [Variable]
+
+    public var isEmpty: Bool { projects.isEmpty && library.isEmpty }
+    public var count: Int { projects.reduce(0) { $0 + $1.count } + library.count }
+
+    public init(account: Account) {
+        let keys = account.allLinkedVariables.sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending }
+        library = keys.filter(\.inLibrary)
+
+        var byEnvironment: [PersistentIdentifier: [Variable]] = [:]
+        var projectsByID: [PersistentIdentifier: Project] = [:]
+        for key in keys where !key.inLibrary {
+            guard let environment = key.environment, let project = environment.project else { continue }
+            byEnvironment[environment.persistentModelID, default: []].append(key)
+            projectsByID[project.persistentModelID] = project
+        }
+        projects = projectsByID.values
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            .map { project in
+                ProjectKeys(project: project, environments: project.sortedEnvironments.compactMap { env in
+                    byEnvironment[env.persistentModelID].map { EnvironmentKeys(environment: env, keys: $0) }
+                })
+            }
+    }
+}

@@ -126,7 +126,7 @@ struct NewProjectForm: View {
                 Text("Environment variables").font(DS.Font.panelTitle)
                 Spacer()
                 Button {
-                    importFiles(EnvFilePicker.choose(message: "Choose .env files. .env.production goes to production, .env.staging to staging, .env and .env.local to development."))
+                    importFiles(EnvFilePicker.choose(message: "Choose .env files. .env.production goes to production, .env.staging to staging, .env and .env.local to development. A comment like #Service/Provider/Account/Link after a value fills those columns."))
                 } label: {
                     Label("Import .env…", systemImage: "square.and.arrow.down")
                 }

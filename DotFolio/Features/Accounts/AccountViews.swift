@@ -90,16 +90,24 @@ extension ServiceCategory {
 
 /// Square tile: the service's icon for single-service accounts, a person for
 /// accounts used on several services.
+/// An account is a login, not a provider (one login serves many), so its
+/// tile is always the person symbol.
 struct AccountTile: View {
     let services: [String]
     var size: CGFloat = 28
 
     var body: some View {
-        if services.count == 1 {
-            TintedIcon(symbol: ServiceType.symbol(for: services[0]), tint: ServiceType.tint(for: services[0]), size: size)
-        } else {
-            TintedIcon(symbol: "person.crop.circle", tint: DS.Palette.violet, size: size)
-        }
+        TintedIcon(symbol: "person.crop.circle", tint: DS.Palette.violet, size: size)
+    }
+}
+
+extension Account {
+    /// "1 project · 6 keys" — no provider names: one login serves many.
+    /// Keys include Library keys, so they can outnumber the projects' ones.
+    var usageSummary: String {
+        let linked = allLinkedVariables
+        let projects = Set(linked.compactMap { $0.project?.persistentModelID }).count
+        return "\(projects) \(projects == 1 ? "project" : "projects") · \(linked.count) \(linked.count == 1 ? "key" : "keys")"
     }
 }
 
@@ -160,10 +168,7 @@ struct AccountList: View {
         }
     }
 
-    private func subtitle(_ account: Account) -> String {
-        let projects = account.linkedProjects.count
-        return "\(account.serviceSummary) · \(projects) \(projects == 1 ? "project" : "projects")"
-    }
+    private func subtitle(_ account: Account) -> String { account.usageSummary }
 }
 
 // MARK: - Detail (right column)
@@ -178,9 +183,10 @@ struct AccountDetailView: View {
     @Environment(\.modelContext) private var context
     @State private var draft: AccountDraft
     @State private var error: String?
-    /// Projects whose "Used by" section is open. Collapsed by default, unless
-    /// the account is used by a single project.
-    @State private var expandedProjects: Set<PersistentIdentifier> = []
+    /// "Used by" sections that are open (project IDs, or `libraryID`).
+    /// Collapsed by default, unless there is a single section.
+    @State private var expanded: Set<String> = []
+    private static let libraryID = "library"
 
     init(account: Account, onOpenProject: @escaping (Project) -> Void, onDelete: @escaping () -> Void) {
         self.account = account
@@ -226,7 +232,7 @@ struct AccountDetailView: View {
             AccountTile(services: account.services, size: 52)
             VStack(alignment: .leading, spacing: DS.Space.xs) {
                 Text(account.login).font(DS.Font.pageTitle).textSelection(.enabled).lineLimit(2)
-                Text(account.displayName.isEmpty ? account.serviceSummary : "\(account.displayName) · \(account.serviceSummary)")
+                Text(account.displayName.isEmpty ? account.usageSummary : "\(account.displayName) · \(account.usageSummary)")
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 12)
@@ -243,105 +249,77 @@ struct AccountDetailView: View {
         }
     }
 
-    /// One collapsible section per project that uses this account. Each
-    /// section lists #, Service, Provider, Link — one row per distinct
-    /// (service, provider, console link) among that project's variables.
+    /// Every key that uses this login, as the same editable table as a
+    /// project's: one collapsible section per project (a table per
+    /// environment), then the Library keys.
     private var usedBy: some View {
-        VStack(alignment: .leading, spacing: DS.Space.s) {
-            let groups = usedByGroups
+        let keys = AccountKeys(account: account)
+        let sectionIDs = keys.projects.map { Self.sectionID($0.project) } + (keys.library.isEmpty ? [] : [Self.libraryID])
+        return VStack(alignment: .leading, spacing: DS.Space.s) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Used by").font(DS.Font.sectionTitle)
-                if groups.count > 1 {
-                    Text("\(groups.count) projects").foregroundStyle(.secondary)
-                    Spacer()
-                    let allOpen = groups.allSatisfy { expandedProjects.contains($0.id) }
+                if !keys.isEmpty {
+                    Text("\(keys.count) \(keys.count == 1 ? "key" : "keys")").foregroundStyle(.secondary)
+                }
+                Spacer()
+                if sectionIDs.count > 1 {
+                    let allOpen = sectionIDs.allSatisfy(expanded.contains)
                     Button(allOpen ? "Collapse All" : "Expand All") {
-                        withAnimation(.smooth(duration: 0.2)) {
-                            expandedProjects = allOpen ? [] : Set(groups.map(\.id))
-                        }
+                        withAnimation(.smooth(duration: 0.2)) { expanded = allOpen ? [] : Set(sectionIDs) }
                     }
                     .buttonStyle(.link)
                     .font(.callout)
                     .clickableCursor()
                 }
             }
-            if groups.isEmpty {
-                Text("No variables use this account yet. Set it in a variable’s Account column.")
+            if keys.isEmpty {
+                Text("No keys use this account yet. Set it in a key’s Account column.")
                     .foregroundStyle(.secondary)
             } else {
                 VStack(spacing: DS.Space.s) {
-                    ForEach(groups) { group in
-                        UsedBySection(
-                            group: group,
-                            isExpanded: Binding(
-                                get: { expandedProjects.contains(group.id) },
-                                set: { open in
-                                    withAnimation(.smooth(duration: 0.2)) {
-                                        if open { expandedProjects.insert(group.id) } else { expandedProjects.remove(group.id) }
-                                    }
+                    ForEach(keys.projects) { group in
+                        AccountKeysSection(
+                            title: group.project.name,
+                            count: group.count,
+                            icon: AnyView(ProjectTile(provider: group.project.provider, size: 28)),
+                            isExpanded: binding(for: Self.sectionID(group.project), single: sectionIDs.count == 1),
+                            onOpen: { onOpenProject(group.project) }
+                        ) {
+                            ForEach(group.environments) { env in
+                                VStack(alignment: .leading, spacing: DS.Space.xs) {
+                                    EnvLabel(name: env.environment.name).font(DS.Font.panelTitle)
+                                    AccountKeysTable(keys: env.keys)
                                 }
-                            ),
-                            onOpenProject: onOpenProject
-                        )
+                            }
+                        }
+                    }
+                    if !keys.library.isEmpty {
+                        AccountKeysSection(
+                            title: "Library",
+                            count: keys.library.count,
+                            icon: AnyView(TintedIcon(symbol: "books.vertical", tint: DS.Palette.violet, size: 28)),
+                            isExpanded: binding(for: Self.libraryID, single: sectionIDs.count == 1),
+                            onOpen: nil
+                        ) {
+                            AccountKeysTable(keys: keys.library)
+                        }
                     }
                 }
-                Text("Click a project to show its services. Double-click a row to open the project.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
-        }
-        .onAppear {
-            let groups = usedByGroups
-            if groups.count == 1 { expandedProjects = [groups[0].id] }
         }
     }
 
-    fileprivate struct UsedByRow: Identifiable {
-        let index: Int
-        let service: String
-        let provider: String
-        let link: URL?
-        let keys: [String]
-        var id: String { "\(service)|\(provider)|\(link?.absoluteString ?? "")" }
-    }
+    private static func sectionID(_ project: Project) -> String { "\(project.persistentModelID.hashValue)" }
 
-    fileprivate struct UsedByGroup: Identifiable {
-        let project: Project
-        let rows: [UsedByRow]
-        var id: PersistentIdentifier { project.persistentModelID }
-    }
-
-    /// Projects in name order; rows in the order their variables were found.
-    private var usedByGroups: [UsedByGroup] {
-        let variables = account.allLinkedVariables.sorted {
-            ($0.project?.name ?? "").localizedStandardCompare($1.project?.name ?? "") == .orderedAscending
-        }
-        var projectOrder: [PersistentIdentifier] = []
-        var projects: [PersistentIdentifier: Project] = [:]
-        var rowOrder: [PersistentIdentifier: [String]] = [:]
-        var rows: [PersistentIdentifier: [String: (service: String, provider: String, link: URL?, keys: [String])]] = [:]
-        for v in variables {
-            guard let project = v.project else { continue }
-            let pid = project.persistentModelID
-            if projects[pid] == nil {
-                projects[pid] = project
-                projectOrder.append(pid)
+    private func binding(for id: String, single: Bool) -> Binding<Bool> {
+        Binding(
+            get: { single || expanded.contains(id) },
+            set: { open in
+                withAnimation(.smooth(duration: 0.2)) {
+                    if open { expanded.insert(id) } else { expanded.remove(id) }
+                }
             }
-            let link = v.sourceURL ?? v.serviceProject?.resolvedConsoleURL
-            let key = "\(v.displayCategory.lowercased())|\(v.displayService.lowercased())|\(link?.absoluteString ?? "")"
-            if rows[pid, default: [:]][key] == nil {
-                rows[pid, default: [:]][key] = (v.displayCategory, v.displayService, link, [])
-                rowOrder[pid, default: []].append(key)
-            }
-            rows[pid]![key]!.keys.append("\(v.key) (\(v.environment?.name ?? "?"))")
-        }
-        return projectOrder.map { pid in
-            let groupRows = (rowOrder[pid] ?? []).enumerated().map { index, key in
-                let r = rows[pid]![key]!
-                return UsedByRow(index: index + 1, service: r.service, provider: r.provider, link: r.link, keys: r.keys)
-            }
-            return UsedByGroup(project: projects[pid]!, rows: groupRows)
-        }
+        )
     }
 
     private func save() {
@@ -683,27 +661,28 @@ struct FlowLayout: Layout {
 
 // MARK: - Used by section
 
-/// Accordion for one project in an account's "Used by": a header row
-/// (chevron, project, count) that toggles a table of services.
-private struct UsedBySection: View {
-    let group: AccountDetailView.UsedByGroup
+/// Accordion for one project (or the Library) in an account's "Used by":
+/// a header row (chevron, tile, name, key count, Open Project) that toggles
+/// the editable key tables.
+private struct AccountKeysSection<Content: View>: View {
+    let title: String
+    let count: Int
+    let icon: AnyView
     @Binding var isExpanded: Bool
-    let onOpenProject: (Project) -> Void
+    let onOpen: (() -> Void)?
+    @ViewBuilder let content: Content
     @State private var isHovering = false
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             header
             if isExpanded {
-                Divider()
-                table
-                    .padding(DS.Space.s)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                VStack(alignment: .leading, spacing: DS.Space.m) { content }
+                    .padding(DS.Space.m)
+                    .transition(.opacity)
             }
         }
-        .background(.quaternary.opacity(DS.Fill.subtle), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.separator))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .panel(radius: DS.Radius.medium, bordered: true)
     }
 
     private var header: some View {
@@ -712,26 +691,24 @@ private struct UsedBySection: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                .frame(width: 14)
-            ProjectTile(provider: group.project.provider, size: 26)
-            Text(group.project.name)
-                .fontWeight(.semibold)
-                .lineLimit(1)
-            Text(group.rows.count == 1 ? "1 service" : "\(group.rows.count) services")
+                .frame(width: 16)
+            icon
+            Text(title).font(DS.Font.sectionTitle).lineLimit(1)
+            Text("\(count) \(count == 1 ? "key" : "keys")")
                 .font(.callout)
                 .foregroundStyle(.secondary)
-            Spacer(minLength: 8)
-            Button("Open Project") { onOpenProject(group.project) }
-                .buttonStyle(.link)
-                .font(.callout)
-                .opacity(isHovering || isExpanded ? 1 : 0)
-                .clickableCursor()
+            Spacer(minLength: DS.Space.s)
+            if let onOpen {
+                Button("Open Project", action: onOpen)
+                    .buttonStyle(.link)
+                    .font(.callout)
+                    .opacity(isHovering || isExpanded ? 1 : 0)
+                    .clickableCursor()
+            }
         }
         .padding(.horizontal, DS.Space.m)
         .padding(.vertical, DS.Space.s)
         .contentShape(Rectangle())
-        // An explicit Rectangle: a bare ShapeStyle background takes on the
-        // card's rounded corners on macOS 26 and leaves the bottom corners bare.
         .background {
             Rectangle().fill(isHovering ? AnyShapeStyle(.quaternary.opacity(DS.Fill.control)) : AnyShapeStyle(Color.clear))
         }
@@ -743,49 +720,49 @@ private struct UsedBySection: View {
         .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
         .accessibilityAction { isExpanded.toggle() }
     }
+}
 
-    private var table: some View {
-        let rows = group.rows
-        return Table(rows) {
-            TableColumn("#") { row in
-                Text("\(row.index)").monospacedDigit().foregroundStyle(.secondary)
-                    .help(row.keys.joined(separator: ", "))
+/// The shared editable `VariableTable` for a set of keys, with a footer for
+/// deleting the selection and showing errors.
+private struct AccountKeysTable: View {
+    let keys: [Variable]
+
+    @State private var selection: Set<Variable.ID> = []
+    @State private var pendingDeletion: [Variable] = []
+    @State private var errorMessage: String?
+    @State private var showsValues = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+            HStack {
+                Spacer()
+                ShowValuesButton(isOn: $showsValues, isEnabled: keys.contains(where: \.hasValue))
             }
-            .width(24)
-
-            TableColumn("Service") { row in
-                Text(row.service.isEmpty ? "—" : row.service)
-                    .foregroundStyle(row.service.isEmpty ? .tertiary : .primary)
-                    .help(row.keys.joined(separator: ", "))
-            }
-            .width(min: TextWidth.fit(rows.map(\.service) + ["Service"], extra: 20, min: 80, max: 160))
-
-            TableColumn("Provider") { row in
-                Text(row.provider.isEmpty ? "—" : row.provider)
-                    .foregroundStyle(row.provider.isEmpty ? .tertiary : .primary)
-            }
-            .width(min: TextWidth.fit(rows.map(\.provider) + ["Provider"], extra: 20, min: 80, max: 180))
-
-            TableColumn("Link") { row in
-                if let url = row.link {
-                    LinkText(url: url)
-                } else {
-                    Text("—").foregroundStyle(.tertiary)
+            VariableTable(
+                variables: keys,
+                selection: $selection,
+                pendingDeletion: $pendingDeletion,
+                errorMessage: $errorMessage,
+                showsValues: $showsValues,
+                emptyText: "No keys"
+            )
+            HStack(spacing: DS.Space.s) {
+                Button {
+                    pendingDeletion = keys.filter { selection.contains($0.id) }
+                } label: { Image(systemName: "minus").frame(width: 24, height: 20) }
+                    .buttonStyle(.borderless)
+                    .disabled(selection.isEmpty)
+                    .help("Delete selected")
+                    .accessibilityLabel("Delete selected keys")
+                    .clickableCursor()
+                Spacer()
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(DS.Status.danger)
+                        .lineLimit(2)
                 }
             }
-            .width(min: TextWidth.fit(rows.map { $0.link?.absoluteString ?? "" } + ["Link"], extra: 20, min: 90, max: 420))
-        }
-        .tableStyle(.bordered(alternatesRowBackgrounds: true))
-        // Tall enough for every row; the column scrolls, not the table.
-        .frame(height: DS.Table.height(rows: rows.count))
-        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-        .contextMenu(forSelectionType: AccountDetailView.UsedByRow.ID.self) { ids in
-            Button("Open \(group.project.name)") { onOpenProject(group.project) }
-            if let row = rows.first(where: { ids.contains($0.id) }), let url = row.link {
-                Link("Open Console", destination: url)
-            }
-        } primaryAction: { _ in
-            onOpenProject(group.project)
         }
     }
 }

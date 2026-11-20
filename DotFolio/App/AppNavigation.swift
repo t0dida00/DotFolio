@@ -8,4 +8,6 @@ final class AppNavigation {
     var isConfirmingErase = false
     /// Set by the "Verify Data…" menu command; RootView shows the report.
     var isVerifyingData = false
+    /// Set by "Suggest Sources…" (menu, Overview) and once on first launch.
+    var isSuggestingSources = false
 }

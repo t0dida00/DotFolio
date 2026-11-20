@@ -7,6 +7,7 @@ import SwiftUI
 struct OverviewDashboard: View {
     @Query private var projects: [Project]
     @Query private var accounts: [Account]
+    @Environment(AppNavigation.self) private var navigation
     let onOpenProject: (Project) -> Void
     let onShowAccounts: () -> Void
     let onOpenAccount: (Account) -> Void
@@ -37,14 +38,16 @@ struct OverviewDashboard: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
 
-                Card(title: "Values filled by environment", subtitle: "Variables with a stored value") {
-                    EnvironmentMeters(environments: stats.environments)
+                HStack(alignment: .top, spacing: DS.Space.l) {
+                    Card(title: "Values filled by environment", subtitle: "Variables with a stored value") {
+                        EnvironmentMeters(environments: stats.environments)
+                    }
+                    Card(title: "Accounts", subtitle: "Ranked by providers, then projects",
+                         trailing: AnyView(Button("Show All", action: onShowAccounts).buttonStyle(.link).clickableCursor())) {
+                        AccountRanking(ranks: stats.accountRanking, onOpen: onOpenAccount)
+                    }
                 }
-
-                Card(title: "Accounts", subtitle: "Ranked by providers, then projects",
-                     trailing: AnyView(Button("Show All", action: onShowAccounts).buttonStyle(.link).clickableCursor())) {
-                    AccountRanking(ranks: stats.accountRanking, onOpen: onOpenAccount)
-                }
+                .fixedSize(horizontal: false, vertical: true)
 
                 HStack(alignment: .top, spacing: DS.Space.l) {
                     Card(title: "Needs attention", subtitle: "Projects with the most missing values") {
@@ -85,7 +88,8 @@ struct OverviewDashboard: View {
             HealthTile(symbol: "exclamationmark.circle", value: s.missingCount, label: "Missing values",
                        detail: "No value stored yet", isWarning: s.missingCount > 0)
             HealthTile(symbol: "questionmark.circle", value: s.noSourceCount, label: "No source",
-                       detail: "\(percent(s.sourceCoverage)) have a provider, account or link", isWarning: s.noSourceCount > 0)
+                       detail: "\(percent(s.sourceCoverage)) have a provider, account or link", isWarning: s.noSourceCount > 0,
+                       action: s.noSourceCount > 0 ? ("Suggest…", { navigation.isSuggestingSources = true }) : nil)
             HealthTile(symbol: "clock.arrow.circlepath", value: s.staleCount, label: "Stale values",
                        detail: "Unchanged for 90+ days", isWarning: s.staleCount > 0)
         }
@@ -111,7 +115,7 @@ private struct StatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s) {
             HStack(spacing: DS.Space.s) {
-                TintedIcon(symbol: symbol, tint: tint, size: 24)
+                TintedIcon(symbol: symbol, tint: tint, size: 34)
                 Text(label).font(.callout).foregroundStyle(.secondary)
             }
             Text(value, format: .number)
@@ -137,6 +141,8 @@ private struct HealthTile: View {
     let label: String
     let detail: String
     let isWarning: Bool
+    /// Optional button at the trailing edge (e.g. "Suggest…").
+    var action: (title: String, run: () -> Void)? = nil
 
     var body: some View {
         HStack(spacing: DS.Space.m) {
@@ -154,11 +160,18 @@ private struct HealthTile: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
+            if let action {
+                Button(action.title, action: action.run)
+                    .buttonBorderShape(.capsule)
+                    .controlSize(.small)
+                    .help("Guess Service and Provider from variable names")
+                    .clickableCursor()
+            }
         }
         .padding(DS.Space.m)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .panel(radius: DS.Radius.medium)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: action == nil ? .combine : .contain)
     }
 }
 

@@ -48,6 +48,8 @@ public enum VariableEditor {
         context.insert(variable)
         variable.environment = environment
         variable.account = findOrCreateAccount(login: account, service: variable.serviceLabel, context: context)
+        // Empty Service / Provider: guess from the name, value and earlier choices.
+        fillMissingSource(variable, value: value, context: context)
         touch(environment)
         return variable
     }
@@ -79,6 +81,7 @@ public enum VariableEditor {
         variable.serviceCategory = normalizedCategory(category)
         context.insert(variable)
         variable.account = findOrCreateAccount(login: account, service: providerName, context: context)
+        fillMissingSource(variable, value: value, context: context)
         return variable
     }
 

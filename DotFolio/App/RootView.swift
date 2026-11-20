@@ -11,6 +11,8 @@ struct RootView: View {
     @Environment(UpdateCenter.self) private var updates
     @State private var flow = ConnectionFlowModel()
     @State private var eraseError: String?
+    /// Suggest Sources opens by itself once, the first time this version runs.
+    @AppStorage("didReviewSourceSuggestions") private var didReviewSources = false
 
     var body: some View {
         @Bindable var navigation = navigation
@@ -21,8 +23,10 @@ struct RootView: View {
             flow.configure(context: context,
                            tokens: KeychainStore.oauthTokens(bundleID: DotFolioApp.bundleID),
                            secrets: KeychainStore.secrets(bundleID: DotFolioApp.bundleID))
+            offerSourceSuggestionsOnce()
         }
         .sheet(isPresented: $navigation.isVerifyingData) { VerifyDataSheet() }
+        .sheet(isPresented: $navigation.isSuggestingSources) { SuggestSourcesSheet() }
         .sheet(isPresented: Binding(get: { updates.isShowingResult }, set: { updates.isShowingResult = $0 })) {
             UpdateResultSheet(center: updates)
         }
@@ -49,6 +53,20 @@ struct RootView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(eraseError ?? "")
+        }
+    }
+
+    /// First launch with this feature: if anything can be filled, show the
+    /// review once. Marked done either way, so it never comes back by itself.
+    private func offerSourceSuggestionsOnce() {
+        guard !didReviewSources else { return }
+        didReviewSources = true
+        guard !SourceSuggester.reviewAll(context: context).isEmpty else { return }
+        Task {
+            try? await Task.sleep(for: .seconds(1)) // let the window settle first
+            if !navigation.isVerifyingData && !updates.isShowingWhatsNew && !updates.isShowingResult {
+                navigation.isSuggestingSources = true
+            }
         }
     }
 

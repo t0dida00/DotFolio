@@ -4,15 +4,22 @@ import SwiftData
 import SwiftUI
 
 /// Home window. One full-window stage at a time:
-/// - no projects yet → welcome screen,
-/// - projects exist → project list,
+/// - nothing yet (no projects, not signed in, no accounts or Library keys)
+///   → welcome screen,
+/// - otherwise → project list (an empty one says "No projects"),
 /// - New Project form or a GitHub/GitLab sign-in → shown inline instead.
 struct HomeView: View {
     @Bindable var model: ConnectionFlowModel
     @Query private var projects: [Project]
+    @Query private var accounts: [Account]
+    @Query(filter: #Predicate<Variable> { $0.inLibrary }) private var libraryKeys: [Variable]
+    @AppStorage(RepoConnections.gitHubUserKey) private var gitHubUser = ""
+    @AppStorage(RepoConnections.gitLabUserKey) private var gitLabUser = ""
     @State private var showNewProject = false
 
-    static let minSize = CGSize(width: 760, height: 560)
+    /// The layout is not responsive: below this size it would squeeze tiles,
+    /// tabs and tables, so the window can't get smaller (it can grow).
+    static let minSize = CGSize(width: 1200, height: 760)
     /// Room for the traffic lights on rows that sit in the title bar area.
     static let trafficLightInset: CGFloat = 80
 
@@ -21,7 +28,13 @@ struct HomeView: View {
     private var stage: Stage {
         if model.step != .idle { return .connecting }
         if showNewProject { return .newProject }
-        return projects.isEmpty ? .welcome : .list
+        return isFirstRun ? .welcome : .list
+    }
+
+    /// Deleting the last project keeps the list when anything else is still
+    /// there (a sign-in, accounts, Library keys) so those stay reachable.
+    private var isFirstRun: Bool {
+        projects.isEmpty && accounts.isEmpty && libraryKeys.isEmpty && gitHubUser.isEmpty && gitLabUser.isEmpty
     }
 
     var body: some View {

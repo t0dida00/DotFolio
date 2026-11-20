@@ -11,6 +11,14 @@ struct ProjectPreview: View {
     @State private var environmentID: ProjectEnvironment.ID?
     @FocusState private var addNameFocused: Bool
     @State private var isEditing = false
+    /// Table or File, remembered across projects and launches (not a secret).
+    @AppStorage("envViewMode") private var viewMode: EnvViewMode = .table
+    /// Show Values above the table; off again when the view or environment changes.
+    @State private var showsValues = false
+    /// The Edit switch: off = the table/file is locked (read-only).
+    @State private var editUnlocked = false
+    /// Suggest Sources for the environment shown (only while Edit is on).
+    @State private var isSuggesting = false
 
     var body: some View {
         // Sorted once per redraw and handed down (each read used to re-sort).
@@ -161,9 +169,44 @@ struct ProjectPreview: View {
             }
 
             if let environment {
-                EnvEditor(environment: environment, onAdd: { addNameFocused = true })
+                HStack(spacing: DS.Space.m) {
+                    Picker("View", selection: $viewMode) {
+                        Text("Table").tag(EnvViewMode.table)
+                        Text("File").tag(EnvViewMode.file)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    .help("See the variables as a table or as a .env file")
+                    .clickableCursor()
+                    Spacer()
+                    if editUnlocked {
+                        Button {
+                            isSuggesting = true
+                        } label: {
+                            Label("Suggest Sources", systemImage: "wand.and.stars")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Guess Service and Provider for the empty ones in \(environment.name)")
+                        .clickableCursor()
+                    }
+                    ShowValuesButton(isOn: $showsValues,
+                                     isEnabled: (environment.variables ?? []).contains(where: \.hasValue))
+                    EditSwitch(isOn: $editUnlocked)
+                }
+                .padding(.top, DS.Space.xs)
+
+                EnvEditor(environment: environment, mode: viewMode, showsValues: $showsValues,
+                          isEditing: $editUnlocked, onAdd: { addNameFocused = true })
                     .id(environment.id) // fresh state (revealed values, drafts) per environment
             }
+        }
+        // Another environment, project or view starts hidden and locked again.
+        .onChange(of: environment?.id) { showsValues = false; editUnlocked = false }
+        .onChange(of: project.id) { showsValues = false; editUnlocked = false }
+        .onChange(of: viewMode) { editUnlocked = false }
+        .sheet(isPresented: $isSuggesting) {
+            SuggestSourcesSheet(variables: environment?.sortedVariables ?? [])
         }
     }
 }

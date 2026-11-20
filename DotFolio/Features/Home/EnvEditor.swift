@@ -20,6 +20,12 @@ struct EnvEditor: View {
     @State private var pendingDeletion: [Variable] = []
     @State private var copyNotice: String?
 
+    /// Table or File (a .env file, editable after Edit).
+    var mode: EnvViewMode = .table
+    /// Every value in plain text; the toggle sits above the table.
+    @Binding var showsValues: Bool
+    /// The Edit switch above the table: off = locked, read-only.
+    @Binding var isEditing: Bool
     /// "+" under the table: focus the pinned Add variable card.
     var onAdd: () -> Void = {}
 
@@ -30,15 +36,27 @@ struct EnvEditor: View {
         let variables = self.variables
         let others = otherEnvironments
         VStack(alignment: .leading, spacing: DS.Space.s) {
-            VariableTable(
-                variables: variables,
-                selection: $selection,
-                pendingDeletion: $pendingDeletion,
-                errorMessage: $errorMessage,
-                emptyText: "No variables in \(environment.name) yet — add one below."
-            )
+            switch mode {
+            case .table:
+                VariableTable(
+                    variables: variables,
+                    selection: $selection,
+                    pendingDeletion: $pendingDeletion,
+                    errorMessage: $errorMessage,
+                    showsValues: $showsValues,
+                    isEditable: isEditing,
+                    emptyText: "No variables in \(environment.name) yet — add one below."
+                )
+            case .file:
+                EnvFileView(environment: environment, variables: variables, errorMessage: $errorMessage, showsValues: $showsValues, isEditing: $isEditing)
+            }
             footer(variables: variables, others: others)
         }
+        .onChange(of: session.isUnlocked) { _, unlocked in
+            if !unlocked { isEditing = false }
+        }
+        // A message from the table (e.g. "no value to copy") doesn't belong to the file view.
+        .onChange(of: mode) { errorMessage = nil; copyNotice = nil }
     }
 
     // MARK: Add row
@@ -53,13 +71,13 @@ struct EnvEditor: View {
                 pendingDeletion = variables.filter { selection.contains($0.id) }
             } label: { Image(systemName: "minus").frame(width: 24, height: 20) }
                 .symbolMotion(.bounce)
-                .disabled(selection.isEmpty)
-                .help("Delete selected")
+                .disabled(selection.isEmpty || !isEditing)
+                .help(isEditing ? "Delete selected" : "Turn on Edit to delete")
                 .accessibilityLabel("Delete selected variables")
             copyMenu(variables: variables, others: others)
                 .padding(.leading, DS.Space.s)
             Spacer()
-            Text(errorMessage ?? copyNotice ?? "Values live in your Keychain · reveal and copy ask for Touch ID")
+            Text(errorMessage ?? copyNotice ?? (isEditing ? "Values live in your Keychain · showing and copying them ask for Touch ID" : "Double-click a row to copy its value · turn on Edit to change it"))
                 .font(.caption)
                 .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
                 .lineLimit(2)

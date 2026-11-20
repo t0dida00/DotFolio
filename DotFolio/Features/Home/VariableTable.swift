@@ -10,8 +10,11 @@ import SwiftUI
 /// - Name / Link / Service / Provider / Account: edit in place, saved on
 ///   Return or when leaving the cell.
 /// - Value: type a new value to replace it (no auth needed to write).
-///   Reveal and Copy read the Keychain, so they ask for Touch ID once per session.
+///   Show Values (one button for the whole table, owned by the parent's
+///   footer) and Copy read the Keychain, so they ask for Touch ID once per session.
 /// - Delete with the Delete key / right-click (confirmed, Keychain first).
+/// - Locked (`isEditable == false`): plain text; double-click a row to copy
+///   its value.
 /// The parent owns selection, the pending deletion and the error line, so
 /// its own footer (− button, Copy to…, messages) can use them.
 struct VariableTable: View {
@@ -19,6 +22,10 @@ struct VariableTable: View {
     @Binding var selection: Set<Variable.ID>
     @Binding var pendingDeletion: [Variable]
     @Binding var errorMessage: String?
+    /// Every value shown in plain text (the footer's Show Values button).
+    @Binding var showsValues: Bool
+    /// False = locked: cells are plain text and rows can't be deleted.
+    var isEditable = true
     var emptyText: String = "No variables yet — add one below."
     /// Extra right-click items for a single variable (e.g. "Add to Project").
     var extraMenu: ((Variable) -> AnyView)? = nil
@@ -47,8 +54,12 @@ struct VariableTable: View {
             .width(24)
 
             TableColumn("Name") { v in
-                CommitField(text: v.key, prompt: "", monospaced: true) { new in
-                    attempt { try VariableEditor.rename(v, to: new) }
+                if isEditable {
+                    CommitField(text: v.key, prompt: "", monospaced: true) { new in
+                        attempt { try VariableEditor.rename(v, to: new) }
+                    }
+                } else {
+                    Text(v.key).monospaced().lineLimit(1)
                 }
             }
             .width(min: widths.name, ideal: widths.name)
@@ -60,7 +71,9 @@ struct VariableTable: View {
 
             // What the value is for. Cells never show placeholder text.
             TableColumn("Service") { v in
-                HStack(spacing: DS.Space.xs) {
+                if !isEditable {
+                    Text(v.displayCategory).lineLimit(1)
+                } else { HStack(spacing: DS.Space.xs) {
                     CommitField(text: v.serviceCategory, prompt: "") { new in
                         VariableEditor.setCategory(v, to: new)
                         return true
@@ -68,25 +81,29 @@ struct VariableTable: View {
                     SuggestionMenu(help: "Choose what this value is for", items: Self.categorySuggestions) { pick in
                         VariableEditor.setCategory(v, to: pick)
                     }
-                }
+                } }
             }
             .width(min: widths.category, ideal: widths.category)
 
             // Who provides it.
             TableColumn("Provider") { v in
-                HStack(spacing: DS.Space.xs) {
+                if !isEditable {
+                    Text(v.displayService).lineLimit(1)
+                } else { HStack(spacing: DS.Space.xs) {
                     CommitField(text: v.displayService, prompt: "") { new in
                         setProvider(v, to: new)
                     }
                     SuggestionMenu(help: "Choose a provider", items: Self.serviceSuggestions) { pick in
                         setProvider(v, to: pick)
                     }
-                }
+                } }
             }
             .width(min: widths.service, ideal: widths.service)
 
             TableColumn("Account") { v in
-                HStack(spacing: DS.Space.xs) {
+                if !isEditable {
+                    Text(v.account?.login ?? "").lineLimit(1).truncationMode(.middle)
+                } else { HStack(spacing: DS.Space.xs) {
                     CommitField(text: v.account?.login ?? "", prompt: "") { new in
                         VariableEditor.setAccount(v, login: new, context: context)
                         return true
@@ -94,12 +111,14 @@ struct VariableTable: View {
                     SuggestionMenu(help: "Choose an account", items: accounts.map(\.login)) { pick in
                         VariableEditor.setAccount(v, login: pick, context: context)
                     }
-                }
+                } }
             }
             .width(min: widths.account, ideal: widths.account)
 
             TableColumn("Link") { v in
-                HStack(spacing: DS.Space.s) {
+                if !isEditable {
+                    if let url = v.sourceURL { LinkText(url: url) }
+                } else { HStack(spacing: DS.Space.s) {
                     CommitField(text: v.sourceURL?.absoluteString ?? "", prompt: "") { new in
                         attempt { try VariableEditor.setLink(v, to: new) }
                     }
@@ -109,7 +128,7 @@ struct VariableTable: View {
                             .help("Open \(url.absoluteString)")
                             .clickableCursor()
                     }
-                }
+                } }
             }
             .width(min: widths.link, ideal: widths.link)
         }
@@ -128,13 +147,18 @@ struct VariableTable: View {
                 if let extraMenu { extraMenu(v) }
                 Divider()
             }
-            if !picked.isEmpty {
+            if !picked.isEmpty && isEditable {
                 Button(picked.count == 1 ? "Delete…" : "Delete \(picked.count) Items…", role: .destructive) {
                     pendingDeletion = picked
                 }
             }
+        } primaryAction: { ids in
+            // Locked table: double-click a row to copy its value.
+            guard !isEditable, ids.count == 1, let v = variables.first(where: { ids.contains($0.id) }) else { return }
+            if v.hasValue { copy(v) } else { errorMessage = "\(v.key) has no value to copy." }
         }
         .onDeleteCommand {
+            guard isEditable else { return }
             let picked = variables.filter { selection.contains($0.id) }
             if !picked.isEmpty { pendingDeletion = picked }
         }
@@ -144,8 +168,15 @@ struct VariableTable: View {
             }
         }
         .onChange(of: session.isUnlocked) { _, unlocked in
-            if !unlocked { revealed.removeAll() }
+            if !unlocked {
+                revealed.removeAll()
+                showsValues = false
+            }
         }
+        .onChange(of: showsValues) { _, show in
+            if show { revealAll() } else { revealed.removeAll() }
+        }
+        .onAppear { if showsValues { revealAll() } }
         .confirmationDialog(
             pendingDeletion.count == 1 ? "Delete \(pendingDeletion.first?.key ?? "")?" : "Delete \(pendingDeletion.count) items?",
             isPresented: Binding(get: { !pendingDeletion.isEmpty }, set: { if !$0 { pendingDeletion = [] } })
@@ -163,8 +194,8 @@ struct VariableTable: View {
         let revealedWidest = revealed.values.map { TextWidth.of($0, monospaced: true, cached: false) }.max() ?? 0
         return (
             name: TextWidth.fit(vars.map(\.key) + ["Name"], monospaced: true, extra: 20, min: 80, max: 280),
-            // Dots (or a revealed value) + the eye and copy buttons.
-            value: min(320, max(150, revealedWidest + 70)),
+            // Dots (or a revealed value) + the copy button.
+            value: min(320, max(150, revealedWidest + 44)),
             category: TextWidth.fit(vars.map(\.displayCategory) + ["Service"], extra: 38, min: 90, max: 160),
             service: TextWidth.fit(vars.map(\.displayService) + ["Provider"], extra: 38, min: 90, max: 200),
             account: TextWidth.fit(vars.map { $0.account?.login ?? "" } + ["Account"], extra: 38, min: 100, max: 300),
@@ -176,7 +207,14 @@ struct VariableTable: View {
     @ViewBuilder
     private func valueCell(_ v: Variable) -> some View {
         HStack(spacing: DS.Space.s) {
-            if let plain = revealed[v.id] {
+            if !isEditable {
+                Text(revealed[v.id] ?? (v.hasValue ? "••••••••" : ""))
+                    .monospaced()
+                    .foregroundStyle(revealed[v.id] == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let plain = revealed[v.id] {
                 CommitField(text: plain, prompt: "", monospaced: true) { new in
                     attempt {
                         try VariableEditor.setValue(v, to: new, secrets: secrets)
@@ -190,18 +228,6 @@ struct VariableTable: View {
                     return attempt { try VariableEditor.setValue(v, to: new, secrets: secrets) }
                 }
             }
-
-            Button {
-                if revealed[v.id] != nil { revealed[v.id] = nil } else { reveal(v) }
-            } label: {
-                Image(systemName: revealed[v.id] != nil ? "eye.slash" : "eye")
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .buttonStyle(.borderless)
-            .symbolMotion(.bounce)
-            .disabled(!v.hasValue)
-            .help(revealed[v.id] != nil ? "Hide value" : "Reveal value (Touch ID)")
-            .clickableCursor()
 
             Button { copy(v) } label: {
                 Image(systemName: copiedID == v.id ? "checkmark" : "doc.on.doc")
@@ -269,6 +295,32 @@ struct VariableTable: View {
             Task {
                 try? await Task.sleep(for: .seconds(1.5))
                 if copiedID == v.id { copiedID = nil }
+            }
+        }
+    }
+
+    /// Reads every stored value with one Touch ID prompt. Cancelling turns
+    /// Show Values back off.
+    private func revealAll() {
+        let withValues = variables.filter(\.hasValue)
+        Task {
+            do {
+                var values: [Variable.ID: String] = [:]
+                if !withValues.isEmpty {
+                    let context = try await session.authenticatedContext(reason: "show values")
+                    for v in withValues {
+                        if let plain = try VariableEditor.value(of: v, secrets: secrets, context: context) { values[v.id] = plain }
+                    }
+                }
+                guard showsValues else { return }
+                revealed = values
+                errorMessage = nil
+            } catch {
+                showsValues = false
+                if let failure = error as? VariableEditor.Failure { errorMessage = failure.message }
+                else if (error as? LAError).map({ [.userCancel, .appCancel, .systemCancel].contains($0.code) }) != true {
+                    errorMessage = error.localizedDescription
+                }
             }
         }
     }
@@ -368,5 +420,41 @@ struct CommitField: View {
         } else {
             draft = text
         }
+    }
+}
+
+/// The Edit switch above a table: off keeps it locked (read-only).
+struct EditSwitch: View {
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            Label("Edit", systemImage: isOn ? "lock.open" : "lock")
+                .contentTransition(.symbolEffect(.replace))
+                .foregroundStyle(isOn ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+        }
+        .toggleStyle(.switch)
+        .controlSize(.small)
+        .help(isOn ? "Lock the table again" : "Unlock to change names, values and sources")
+        .clickableCursor()
+    }
+}
+
+/// Toggle above a `VariableTable`: shows or hides every value at once.
+struct ShowValuesButton: View {
+    @Binding var isOn: Bool
+    /// False when nothing in the table has a value.
+    var isEnabled = true
+
+    var body: some View {
+        Button { isOn.toggle() } label: {
+            Label(isOn ? "Hide Values" : "Show Values", systemImage: isOn ? "eye.slash" : "eye")
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(.borderless)
+        .symbolMotion(.bounce)
+        .disabled(!isEnabled && !isOn)
+        .help(isOn ? "Hide the values again" : "Show every value in this table (Touch ID)")
+        .clickableCursor()
     }
 }

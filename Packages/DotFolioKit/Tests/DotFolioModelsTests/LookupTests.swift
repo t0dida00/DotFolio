@@ -92,6 +92,27 @@ struct LookupTests {
         #expect(f.projectaProd.linkedProjects.map(\.name) == ["Project A"])
     }
 
+    @Test func accountKeysGroupByProjectEnvironmentAndLibrary() throws {
+        let f = try makeFixture()
+        let libraryKey = Variable(key: "STRIPE_TEST_KEY", environment: nil)
+        libraryKey.inLibrary = true
+        f.context.insert(libraryKey)
+        libraryKey.link(account: f.stripe, serviceProject: nil)
+
+        let keys = AccountKeys(account: f.stripe)
+        #expect(keys.projects.map(\.project.name) == ["Project A", "Project B"])
+        #expect(keys.projects[0].environments.map(\.environment.name) == ["production"])
+        #expect(keys.projects[0].environments[0].keys.map(\.key) == ["STRIPE_SECRET_KEY"])
+        #expect(keys.library.map(\.key) == ["STRIPE_TEST_KEY"])
+        #expect(keys.count == 3)
+
+        // Through a provider project: both production keys of Project A.
+        let work = AccountKeys(account: f.firebaseWork)
+        #expect(work.projects.map(\.count) == [2])
+        #expect(work.library.isEmpty)
+        #expect(AccountKeys(account: Account(serviceType: .firebase, login: "nobody")).isEmpty)
+    }
+
     @Test func accountVariablesAreNotDuplicated() throws {
         let f = try makeFixture()
         // Linked via service project AND directly (same variables) -> counted once.

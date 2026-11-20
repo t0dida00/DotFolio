@@ -38,7 +38,7 @@ struct DotFolioApp: App {
                 }
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 920, height: 600)
+        .defaultSize(width: 1280, height: 820)
         .windowResizability(.contentMinSize)
         .modelContainer(container)
         .environment(\.secretStore, KeychainStore.secrets(bundleID: Self.bundleID))
@@ -49,6 +49,7 @@ struct DotFolioApp: App {
                 Button("Check for Updates…", action: updates.checkForUpdates)
                 Button("What’s New in DOTFOLIO") { updates.isShowingWhatsNew = true }
                 Divider()
+                Button("Suggest Sources…") { navigation.isSuggestingSources = true }
                 Button("Verify Data…") { navigation.isVerifyingData = true }
                 Button("Erase All Data…") { navigation.isConfirmingErase = true }
             }

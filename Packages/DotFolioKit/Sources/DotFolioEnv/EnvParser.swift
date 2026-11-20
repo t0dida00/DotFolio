@@ -6,12 +6,19 @@ public struct EnvEntry: Equatable, Sendable {
     public var value: String
     /// Comment lines directly above the entry (without "#"), joined by newlines.
     public var comment: String
+    /// Comment at the end of the entry's line (without "#"), e.g.
+    /// `KEY=value #AI/OpenAI/me@x.com` → "AI/OpenAI/me@x.com".
+    public var inlineComment: String
 
-    public init(key: String, value: String = "", comment: String = "") {
+    public init(key: String, value: String = "", comment: String = "", inlineComment: String = "") {
         self.key = key
         self.value = value
         self.comment = comment
+        self.inlineComment = inlineComment
     }
+
+    /// Service / provider / account / link written in the inline comment.
+    public var source: EnvSource { EnvSource(comment: inlineComment) }
 }
 
 /// Parses dotenv files the way most loaders (dotenv, docker compose, Vite) do:
@@ -46,6 +53,7 @@ public enum EnvParser {
             var raw = String(rest[rest.index(after: eq)...]).trimmingCharacters(in: .whitespaces)
 
             let value: String
+            var inline = ""
             if raw.hasPrefix("\"") {
                 // Double-quoted values may continue on following lines.
                 while !hasClosingQuote(raw, quote: "\""), i < lines.count {
@@ -53,14 +61,23 @@ public enum EnvParser {
                     i += 1
                 }
                 value = unescape(quotedBody(raw, quote: "\""))
+                inline = trailingComment(raw, quote: "\"")
             } else if raw.hasPrefix("'") {
                 value = quotedBody(raw, quote: "'")
+                inline = trailingComment(raw, quote: "'")
             } else {
-                if let hash = raw.range(of: " #") { raw = String(raw[..<hash.lowerBound]) }
+                if let hash = raw.range(of: " #") {
+                    inline = String(raw[hash.upperBound...]).trimmingCharacters(in: .whitespaces)
+                    raw = String(raw[..<hash.lowerBound])
+                } else if raw.hasPrefix("#") {
+                    // `KEY= #comment` / `KEY=#comment`: empty value.
+                    inline = String(raw.dropFirst()).trimmingCharacters(in: .whitespaces)
+                    raw = ""
+                }
                 value = raw.trimmingCharacters(in: .whitespaces)
             }
 
-            let entry = EnvEntry(key: key, value: value, comment: pendingComment.joined(separator: "\n"))
+            let entry = EnvEntry(key: key, value: value, comment: pendingComment.joined(separator: "\n"), inlineComment: inline)
             pendingComment = []
             if let existing = indexByKey[key] {
                 entries[existing] = entry
@@ -87,6 +104,21 @@ public enum EnvParser {
             if char == quote { return true }
         }
         return false
+    }
+
+    /// Text of a `#` comment after the closing quote, if any.
+    private static func trailingComment(_ raw: String, quote: Character) -> String {
+        var escaped = false
+        var closing: String.Index?
+        var index = raw.index(after: raw.startIndex)
+        while index < raw.endIndex {
+            let char = raw[index]
+            if escaped { escaped = false } else if char == "\\" && quote == "\"" { escaped = true } else if char == quote { closing = index; break }
+            index = raw.index(after: index)
+        }
+        guard let closing else { return "" }
+        let rest = raw[raw.index(after: closing)...].trimmingCharacters(in: .whitespaces)
+        return rest.hasPrefix("#") ? String(rest.dropFirst()).trimmingCharacters(in: .whitespaces) : ""
     }
 
     private static func quotedBody(_ raw: String, quote: Character) -> String {

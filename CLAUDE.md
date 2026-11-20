@@ -32,6 +32,7 @@ Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project sec
 - Spacing/padding: `DS.Space` (4pt grid: 2·4·8·12·16·20·24·32); only window-chrome/hero insets ≥ 40 may be literal.
 - Type: `DS.Font.pageTitle` (screen/full-window step), `.sheetTitle`, `.sectionTitle`, `.panelTitle`, `.label` (column headers). Body text uses `.callout`/`.caption` for secondary lines.
 - Color: accent is the brand violet (asset `AccentColor`). Icon tiles: `TintedIcon` with a `DS.Palette` hue (soft tint background, same-hue icon) — no gray tiles. Environments: `DS.Env` (development aqua, staging amber, production red) with `EnvLabel`. States: `DS.Status` (danger/warning/success), always with an icon or text. Fills: `DS.Fill`. Hues come from the validated palette — run the dataviz validator before adding new ones.
+- Window layout is not responsive: minimum window `HomeView.minSize` (1200×760), list column fixed at `ProjectBrowser.sidebarWidth` (320). Never size columns as a fraction of the window.
 - Page sections: `Card`. Light inset blocks: `.panel()`. Chips: `.chip()`.
 - Tables: native `Table` with `.bordered(alternatesRowBackgrounds: true)`, height `DS.Table.height(rows:)` (no vertical scroll, sideways only), content-fit widths via `TextWidth.fit`.
 - Inputs: no placeholder text anywhere (forms, table cells, add cards). Explain a form field with a caption line under it, `.fieldHint("…")` (red with `isError: true`); "(optional)" goes in the label. Search/filter fields are the only exception.

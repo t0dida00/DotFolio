@@ -21,7 +21,7 @@ public enum EnvExporter {
     /// - single quotes when the value has `$` (so loaders don't expand it) and
     ///   no single quote or newline,
     /// - double quotes with \n \" \\ escapes for everything else.
-    static func quote(_ value: String) -> String {
+    public static func quote(_ value: String) -> String {
         if value.isEmpty { return "" }
         let needsQuoting = value.contains { " #\"'\\\n\r\t$`=".contains($0) }
             || value.first == " " || value.last == " "
