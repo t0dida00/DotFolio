@@ -50,6 +50,37 @@ struct OverviewStatsTests {
         #expect(stats.attention.map(\.project.name) == ["Blog", "Shop"])
     }
 
+    @Test func aNameInSeveralEnvironmentsCountsOnce() throws {
+        let context = ModelContext(try DotFolioSchema.makeContainer(inMemory: true))
+        let shop = Project.create(name: "Shop", in: context)
+        let (dev, staging, prod) = (shop.sortedEnvironments[0], shop.sortedEnvironments[1], shop.sortedEnvironments[2])
+        func add(_ key: String, to env: ProjectEnvironment, value: Bool, provider: String = "") {
+            let v = Variable(key: key)
+            context.insert(v)
+            v.environment = env
+            v.hasValue = value
+            v.serviceLabel = provider
+        }
+        // DATABASE_URL everywhere, set only in development; source only on production's copy.
+        add("DATABASE_URL", to: dev, value: true)
+        add("DATABASE_URL", to: staging, value: false)
+        add("DATABASE_URL", to: prod, value: false, provider: "Supabase")
+        // STRIPE_KEY set in both environments it is in.
+        add("STRIPE_KEY", to: dev, value: true, provider: "Stripe")
+        add("STRIPE_KEY", to: prod, value: true, provider: "Stripe")
+
+        let stats = OverviewStats(projects: [shop], accounts: [])
+        #expect(stats.variableCount == 2)                 // names, not 5 copies
+        #expect(stats.withValueCount == 1 && stats.missingCount == 1)
+        #expect(stats.noSourceCount == 0)                 // one copy with a source is enough
+        #expect(stats.services.map(\.variables) == [1, 1])
+        #expect(stats.attention.first?.missing == 1 && stats.attention.first?.total == 2)
+        #expect(Set(stats.recentlyUpdated.map(\.key)) == ["DATABASE_URL", "STRIPE_KEY"])
+        #expect(stats.recentlyUpdated.count == 2)
+        // Per-environment progress still counts each environment.
+        #expect(stats.environments.map(\.total) == [2, 1, 2])
+    }
+
     @Test func emptyIsSafe() {
         let stats = OverviewStats(projects: [], accounts: [])
         #expect(stats.valueCoverage == 1)

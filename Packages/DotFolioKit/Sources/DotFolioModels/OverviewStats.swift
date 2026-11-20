@@ -59,26 +59,31 @@ public struct OverviewStats {
 
     public init(projects: [Project], accounts: [Account], now: Date = .now, staleAfterDays: Int = 90) {
         let variables = projects.flatMap(\.allVariables)
+        // A variable is a name in a project: DATABASE_URL in development,
+        // staging and production counts once (same as the project page).
+        let groups = VariableGroup.group(variables)
         projectCount = projects.count
         repoProjectCount = projects.filter { $0.provider != .none }.count
-        variableCount = variables.count
-        withValueCount = variables.filter(\.hasValue).count
-        noSourceCount = variables.filter {
-            $0.displayService.isEmpty && $0.account == nil && $0.serviceProject == nil && $0.sourceURL == nil
+        variableCount = groups.count
+        // Set = a value in every environment it is in; missing in one = missing.
+        withValueCount = groups.filter { $0.copies.allSatisfy(\.hasValue) }.count
+        noSourceCount = groups.filter { group in
+            group.copies.allSatisfy {
+                $0.displayService.isEmpty && $0.account == nil && $0.serviceProject == nil && $0.sourceURL == nil
+            }
         }.count
         let cutoff = now.addingTimeInterval(-Double(staleAfterDays) * 86_400)
-        staleCount = variables.filter { $0.hasValue && $0.updatedAt < cutoff }.count
+        staleCount = groups.filter { $0.copies.contains { $0.hasValue && $0.updatedAt < cutoff } }.count
         accountCount = accounts.count
 
         // Services: usage by variables (case-insensitive), plus services only listed on accounts.
         var byService: [String: (name: String, vars: Int, projects: Set<UUID>)] = [:]
-        for v in variables {
-            let name = v.displayService
-            guard !name.isEmpty else { continue }
+        for group in groups {
+            guard let name = group.first(\.displayService) else { continue }
             let key = name.lowercased()
             var entry = byService[key] ?? (name, 0, [])
             entry.vars += 1
-            if let p = v.project { entry.projects.insert(p.id) }
+            if let p = group.project { entry.projects.insert(p.id) }
             byService[key] = entry
         }
         var allServiceKeys = Set(byService.keys)
@@ -89,12 +94,11 @@ public struct OverviewStats {
             .sorted { ($0.variables, $1.name) > ($1.variables, $0.name) }
 
         var byCategory: [String: (name: String, vars: Int, projects: Set<UUID>)] = [:]
-        for v in variables {
-            let name = v.displayCategory
-            guard !name.isEmpty else { continue }
+        for group in groups {
+            guard let name = group.first(\.displayCategory) else { continue }
             var entry = byCategory[name.lowercased()] ?? (name, 0, [])
             entry.vars += 1
-            if let p = v.project { entry.projects.insert(p.id) }
+            if let p = group.project { entry.projects.insert(p.id) }
             byCategory[name.lowercased()] = entry
         }
         categories = byCategory.values
@@ -120,15 +124,45 @@ public struct OverviewStats {
 
         accountRanking = accounts
             .map { AccountRank(account: $0, services: $0.services.count, projects: $0.linkedProjects.count,
-                               variables: $0.allLinkedVariables.count) }
+                               variables: VariableGroup.group($0.allLinkedVariables).count) }
             .sorted { ($0.services, $0.projects, $0.variables) > ($1.services, $1.projects, $1.variables) }
 
         attention = projects
-            .map { p in ProjectAttention(project: p, missing: p.allVariables.filter { !$0.hasValue }.count, total: p.allVariables.count) }
+            .map { p in
+                let names = VariableGroup.group(p.allVariables)
+                return ProjectAttention(project: p, missing: names.filter { !$0.copies.allSatisfy(\.hasValue) }.count, total: names.count)
+            }
             .filter { $0.missing > 0 }
-            .sorted { $0.missing > $1.missing }
+            .sorted { ($0.missing, $1.project.name) > ($1.missing, $0.project.name) }
             .prefix(5).map { $0 }
 
-        recentlyUpdated = Array(variables.sorted { $0.updatedAt > $1.updatedAt }.prefix(5))
+        // One row per name: its most recently changed copy.
+        recentlyUpdated = Array(groups.compactMap { $0.copies.max { $0.updatedAt < $1.updatedAt } }
+            .sorted { $0.updatedAt > $1.updatedAt }.prefix(5))
+    }
+}
+
+/// The per-environment copies of one variable name in one project.
+struct VariableGroup {
+    let copies: [Variable]
+    var project: Project? { copies.first?.project }
+
+    /// First non-empty value of a field across the copies (environment order).
+    func first(_ field: KeyPath<Variable, String>) -> String? {
+        copies.lazy.map { $0[keyPath: field] }.first { !$0.isEmpty }
+    }
+
+    /// Groups by (project, name); Library keys (no project) stay one each.
+    static func group(_ variables: [Variable]) -> [VariableGroup] {
+        var order: [String] = []
+        var byID: [String: [Variable]] = [:]
+        for v in variables {
+            let id = v.project.map { "\($0.id.uuidString)|\(v.key)" } ?? v.id.uuidString
+            if byID[id] == nil { order.append(id) }
+            byID[id, default: []].append(v)
+        }
+        return order.map { id in
+            VariableGroup(copies: (byID[id] ?? []).sorted { ($0.environment?.sortOrder ?? 0) < ($1.environment?.sortOrder ?? 0) })
+        }
     }
 }

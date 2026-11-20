@@ -103,8 +103,12 @@ struct ProjectPreview: View {
 
     @ViewBuilder
     private func infoGrid(environmentCount: Int) -> some View {
+        // Count names, not per-environment copies: DATABASE_URL in development,
+        // staging and production is one variable. A name is missing a value
+        // when any of its environments has none.
         let all = project.allVariables
-        let missing = all.reduce(0) { $0 + ($1.hasValue ? 0 : 1) }
+        let names = Set(all.map(\.key)).count
+        let missing = Set(all.filter { !$0.hasValue }.map(\.key)).count
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.m, verticalSpacing: DS.Space.s) {
             if let url = project.repoURL {
                 GridRow {
@@ -128,7 +132,7 @@ struct ProjectPreview: View {
             }
             GridRow {
                 label("Variables")
-                Text(Self.variablesSummary(total: all.count, missing: missing, environments: environmentCount))
+                Text(Self.variablesSummary(names: names, missing: missing, environments: environmentCount))
                     .foregroundStyle(missing > 0 ? AnyShapeStyle(DS.Status.warning) : AnyShapeStyle(.primary))
             }
             GridRow {
@@ -142,10 +146,11 @@ struct ProjectPreview: View {
         Text(text).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
     }
 
-    private static func variablesSummary(total: Int, missing: Int, environments: Int) -> String {
-        guard total > 0 else { return "None yet" }
-        let base = "\(total) across \(environments) environments"
-        return missing == 0 ? base : "\(base) · \(missing) missing \(missing == 1 ? "value" : "values")"
+    /// "13 in 3 environments · 5 missing a value" (distinct names).
+    private static func variablesSummary(names: Int, missing: Int, environments: Int) -> String {
+        guard names > 0 else { return "None yet" }
+        let base = "\(names) in \(environments) environments"
+        return missing == 0 ? base : "\(base) · \(missing) missing a value"
     }
 
     // MARK: Bottom: .env table
