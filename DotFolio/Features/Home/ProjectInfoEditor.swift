@@ -22,6 +22,11 @@ struct ProjectInfoEditor: View {
         _link = State(initialValue: project.repoURL?.absoluteString ?? "")
     }
 
+    private var linkIsInvalid: Bool {
+        let text = link.trimmingCharacters(in: .whitespaces)
+        return !text.isEmpty && InputValidation.webURL(text) == nil
+    }
+
     private var linkHint: String {
         let text = link.trimmingCharacters(in: .whitespaces)
         if text.isEmpty { return "A GitHub or GitLab link is recognized as the project’s repo." }
@@ -40,20 +45,20 @@ struct ProjectInfoEditor: View {
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.s, verticalSpacing: DS.Space.s) {
                 GridRow {
                     label("Project name")
-                    TextField("", text: $name, prompt: Text("My App"))
+                    TextField("", text: $name)
                         .focused($nameFocused)
+                        .fieldHint("Shown in the project list and tabs, e.g. My App.")
                 }
                 GridRow {
-                    label("Description")
-                    TextField("", text: $summary, prompt: Text("What this project is (optional)"), axis: .vertical)
+                    label("Description", optional: true)
+                    TextField("", text: $summary, axis: .vertical)
                         .lineLimit(1...3)
+                        .fieldHint("A short note about what this project is.")
                 }
                 GridRow {
-                    label("Project link")
-                    VStack(alignment: .leading, spacing: DS.Space.xxs) {
-                        TextField("", text: $link, prompt: Text(verbatim: "https://github.com/owner/repo (optional)"))
-                        Text(linkHint).font(.caption).foregroundStyle(.secondary)
-                    }
+                    label("Project link", optional: true)
+                    TextField("", text: $link)
+                        .fieldHint(linkHint, isError: linkIsInvalid)
                 }
                 GridRow {
                     label("Local folder")
@@ -104,8 +109,12 @@ struct ProjectInfoEditor: View {
         }
     }
 
-    private func label(_ text: String) -> some View {
-        Text(text).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
+    private func label(_ text: String, optional: Bool = false) -> some View {
+        HStack(spacing: DS.Space.xs) {
+            Text(text).foregroundStyle(.secondary)
+            if optional { Text("(optional)").foregroundStyle(.tertiary) }
+        }
+        .gridColumnAlignment(.trailing)
     }
 
     private func refreshFolder() {

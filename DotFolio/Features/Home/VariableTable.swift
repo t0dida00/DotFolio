@@ -58,11 +58,10 @@ struct VariableTable: View {
             }
             .width(min: widths.value, ideal: widths.value)
 
-            // What the value is for. No example placeholders; only a real guess
-            // from the provider (Redis → Cache) shows, dimmed, until one is chosen.
+            // What the value is for. Cells never show placeholder text.
             TableColumn("Service") { v in
                 HStack(spacing: DS.Space.xs) {
-                    CommitField(text: v.serviceCategory, prompt: v.displayCategory) { new in
+                    CommitField(text: v.serviceCategory, prompt: "") { new in
                         VariableEditor.setCategory(v, to: new)
                         return true
                     }

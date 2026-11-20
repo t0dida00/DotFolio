@@ -32,6 +32,7 @@ Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project sec
 - Color: accent is the brand violet (asset `AccentColor`). Icon tiles: `TintedIcon` with a `DS.Palette` hue (soft tint background, same-hue icon) — no gray tiles. Environments: `DS.Env` (development aqua, staging amber, production red) with `EnvLabel`. States: `DS.Status` (danger/warning/success), always with an icon or text. Fills: `DS.Fill`. Hues come from the validated palette — run the dataviz validator before adding new ones.
 - Page sections: `Card`. Light inset blocks: `.panel()`. Chips: `.chip()`.
 - Tables: native `Table` with `.bordered(alternatesRowBackgrounds: true)`, height `DS.Table.height(rows:)` (no vertical scroll, sideways only), content-fit widths via `TextWidth.fit`.
+- Inputs: no placeholder text anywhere (forms, table cells, add cards). Explain a form field with a caption line under it, `.fieldHint("…")` (red with `isError: true`); "(optional)" goes in the label. Search/filter fields are the only exception.
 - Links in tables/grids: `LinkText` (one line, left-aligned), never a bare `Link` with long text.
 - Every clickable control gets `.clickableCursor()` (on the control or its container). Action buttons use `.buttonBorderShape(.capsule)`.
 - Terms: **Service** = what it's for (Database, Cache…), **Provider** = who provides it (Supabase, Redis…), **Account** = a login (several providers), **Link** = console URL, **Library key** = a `Variable` with `inLibrary == true` and no environment (reusable, not in any project; names unique per provider).

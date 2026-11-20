@@ -1,4 +1,5 @@
 import DotFolioCore
+import DotFolioEnv
 import DotFolioModels
 import DotFolioSecurity
 import SwiftData
@@ -16,6 +17,10 @@ struct NewProjectForm: View {
     @State private var selection: Set<EnvDraftRow.ID> = []
     @State private var keychainError: KeychainError?
     @State private var confirmDiscard = false
+    /// Result of the last .env import, shown under the table.
+    @State private var importNotice: String?
+    @State private var importError: String?
+    @State private var dropTargeted = false
     @FocusState private var nameFocused: Bool
 
     var body: some View {
@@ -76,26 +81,23 @@ struct NewProjectForm: View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.s, verticalSpacing: DS.Space.s) {
             GridRow {
                 fieldLabel("Project name")
-                TextField("", text: $draft.name, prompt: Text("My App"))
+                TextField("", text: $draft.name)
                     .textFieldStyle(.roundedBorder)
                     .focused($nameFocused)
+                    .fieldHint("Shown in the project list and tabs, e.g. My App.")
             }
             GridRow {
                 fieldLabel("Description", optional: true)
-                TextField("", text: $draft.summary, prompt: Text("What this project is"), axis: .vertical)
+                TextField("", text: $draft.summary, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...3)
+                    .fieldHint("A short note about what this project is.")
             }
             GridRow {
                 fieldLabel("Project link", optional: true)
-                VStack(alignment: .leading, spacing: DS.Space.xxs) {
-                    // verbatim: a plain Text would render the URL as a blue link.
-                    TextField("", text: $draft.link, prompt: Text(verbatim: "https://github.com/owner/repo"))
-                        .textFieldStyle(.roundedBorder)
-                    Text(linkHint)
-                        .font(.caption)
-                        .foregroundStyle(draft.linkIsInvalid ? AnyShapeStyle(DS.Status.danger) : AnyShapeStyle(.secondary))
-                }
+                TextField("", text: $draft.link)
+                    .textFieldStyle(.roundedBorder)
+                    .fieldHint(linkHint, isError: draft.linkIsInvalid)
             }
         }
     }
@@ -123,6 +125,16 @@ struct NewProjectForm: View {
             HStack {
                 Text("Environment variables").font(DS.Font.panelTitle)
                 Spacer()
+                Button {
+                    importFiles(EnvFilePicker.choose(message: "Choose .env files. .env.production goes to production, .env.staging to staging, .env and .env.local to development."))
+                } label: {
+                    Label("Import .env…", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+                .symbolMotion(.bounceDown)
+                .clickableCursor()
+                .help("Fill the table from .env files — or drop them on the table")
                 EnvironmentPicker(names: ProjectEnvironment.defaultNames, selection: $draft.environmentName)
             }
 
@@ -135,13 +147,13 @@ struct NewProjectForm: View {
                 .width(20)
 
                 TableColumn("Name") { row in
-                    TextField("", text: binding(row.id, \.key), prompt: Text("API_KEY"))
+                    TextField("", text: binding(row.id, \.key))
                         .textFieldStyle(.plain)
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(draft.keyIssue(for: row) == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(DS.Status.danger))
                         .help(draft.keyIssue(for: row) ?? "")
                 }
-                .width(TextWidth.fit(draft.rows.map(\.key) + ["API_KEY"], monospaced: true, extra: 20, min: 80, max: 260))
+                .width(min: TextWidth.fit(draft.rows.map(\.key) + ["Name"], monospaced: true, extra: 20, min: 80, max: 260), ideal: TextWidth.fit(draft.rows.map(\.key) + ["Name"], monospaced: true, extra: 20, min: 80, max: 260))
 
                 TableColumn("Value") { row in
                     HStack(spacing: DS.Space.s) {
@@ -149,9 +161,9 @@ struct NewProjectForm: View {
                         // the user just typed (nothing is read from the Keychain).
                         Group {
                             if row.isRevealed {
-                                TextField("", text: binding(row.id, \.value), prompt: Text("value"))
+                                TextField("", text: binding(row.id, \.value))
                             } else {
-                                SecureField("", text: binding(row.id, \.value), prompt: Text("value"))
+                                SecureField("", text: binding(row.id, \.value))
                             }
                         }
                         .textFieldStyle(.plain)
@@ -175,34 +187,47 @@ struct NewProjectForm: View {
                 .width(min(320, max(140, (draft.rows.filter(\.isRevealed).map { TextWidth.of($0.value, monospaced: true, cached: false) }.max() ?? 0) + 50)))
 
                 TableColumn("Service") { row in
-                    TextField("", text: binding(row.id, \.category), prompt: Text("e.g. Database"))
+                    TextField("", text: binding(row.id, \.category))
                         .textFieldStyle(.plain)
                 }
-                .width(TextWidth.fit(draft.rows.map(\.category) + ["e.g. Database"], extra: 20, min: 100, max: 160))
+                .width(min: TextWidth.fit(draft.rows.map(\.category) + ["Service"], extra: 20, min: 100, max: 160), ideal: TextWidth.fit(draft.rows.map(\.category) + ["Service"], extra: 20, min: 100, max: 160))
 
                 TableColumn("Provider") { row in
-                    TextField("", text: binding(row.id, \.service), prompt: Text("e.g. Supabase"))
+                    TextField("", text: binding(row.id, \.service))
                         .textFieldStyle(.plain)
                 }
-                .width(TextWidth.fit(draft.rows.map(\.service) + ["e.g. Supabase"], extra: 20, min: 100, max: 200))
+                .width(min: TextWidth.fit(draft.rows.map(\.service) + ["Provider"], extra: 20, min: 100, max: 200), ideal: TextWidth.fit(draft.rows.map(\.service) + ["Provider"], extra: 20, min: 100, max: 200))
 
                 TableColumn("Account") { row in
-                    TextField("", text: binding(row.id, \.account), prompt: Text("email or username"))
+                    TextField("", text: binding(row.id, \.account))
                         .textFieldStyle(.plain)
                 }
-                .width(TextWidth.fit(draft.rows.map(\.account) + ["email or username"], extra: 20, min: 130, max: 300))
+                .width(min: TextWidth.fit(draft.rows.map(\.account) + ["Account"], extra: 20, min: 130, max: 300), ideal: TextWidth.fit(draft.rows.map(\.account) + ["Account"], extra: 20, min: 130, max: 300))
 
                 TableColumn("Link") { row in
-                    TextField("", text: binding(row.id, \.link), prompt: Text(verbatim: "https://…"))
+                    TextField("", text: binding(row.id, \.link))
                         .textFieldStyle(.plain)
                         .foregroundStyle(draft.linkIssue(for: row) == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(DS.Status.danger))
                         .help(draft.linkIssue(for: row) ?? "Where to get or manage this value")
                 }
-                .width(TextWidth.fit(draft.rows.map(\.link) + ["https://…"], extra: 20, min: 100, max: 360))
+                .width(min: TextWidth.fit(draft.rows.map(\.link) + ["Link"], extra: 20, min: 100, max: 360), ideal: TextWidth.fit(draft.rows.map(\.link) + ["Link"], extra: 20, min: 100, max: 360))
             }
             .tableStyle(.bordered(alternatesRowBackgrounds: true))
             .frame(minHeight: 140, maxHeight: .infinity)
             .onDeleteCommand(perform: deleteSelected)
+            .dropDestination(for: URL.self) { urls, _ in
+                importFiles(urls)
+                return !urls.isEmpty
+            } isTargeted: { dropTargeted = $0 }
+            .overlay {
+                if dropTargeted {
+                    RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
+                        .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                        .background(Color.accentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
+                        .overlay { Label("Drop .env files to import", systemImage: "square.and.arrow.down").font(DS.Font.panelTitle) }
+                        .allowsHitTesting(false)
+                }
+            }
 
             HStack(spacing: 0) {
                 Button(action: addRow) { Image(systemName: "plus").frame(width: 24, height: 20) }
@@ -215,9 +240,11 @@ struct NewProjectForm: View {
                     .help("Remove selected")
                     .accessibilityLabel("Remove selected")
                 Spacer()
-                Text(issueSummary ?? "Values are stored in your Mac’s Keychain, never in the database.")
+                let problem = issueSummary ?? importError
+                Text(problem ?? importNotice ?? "Values are stored in your Mac’s Keychain, never in the database.")
                     .font(.caption)
-                    .foregroundStyle(issueSummary == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
+                    .foregroundStyle(problem == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
+                    .lineLimit(2)
             }
             .buttonStyle(.borderless)
             .clickableCursor()
@@ -230,7 +257,10 @@ struct NewProjectForm: View {
             if let l = draft.linkIssue(for: row) { return "Row \(index(of: row) + 1): \(l)" }
             return nil
         }
-        guard let first = issues.first else { return nil }
+        guard let first = issues.first else {
+            let others = draft.otherEnvironmentsWithIssues
+            return others.isEmpty ? nil : "Fix the names in \(others.joined(separator: ", ")) before creating."
+        }
         return issues.count == 1 ? first : "\(first) (+\(issues.count - 1) more)"
     }
 
@@ -238,7 +268,7 @@ struct NewProjectForm: View {
 
     private var footer: some View {
         HStack {
-            Text("Also creates staging and production.")
+            Text(environmentSummary)
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -246,7 +276,56 @@ struct NewProjectForm: View {
         }
     }
 
+    /// Which environments get variables; all three are always created.
+    private var environmentSummary: String {
+        let filled = draft.environmentsWithRows.map { "\($0) \(draft.filledRows(in: $0).count)" }
+        guard !filled.isEmpty else { return "Also creates staging and production." }
+        return "Variables: \(filled.joined(separator: " · ")). All three environments are created."
+    }
+
     // MARK: Actions
+
+    /// Reads the files and fills each environment's table: the file name
+    /// picks the environment (.env.production → production); templates and
+    /// unrecognized names go to the environment shown, templates without values.
+    private func importFiles(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        let files: [EnvFilePicker.File]
+        do { files = try EnvFilePicker.read(urls) } catch {
+            importError = error.localizedDescription
+            importNotice = nil
+            return
+        }
+        var counts: [String: Int] = [:]
+        var kept: [String] = []
+        var firstTarget: String?
+        for file in files {
+            let target: String
+            let includeValues: Bool
+            switch file.kind {
+            case .environment(let name): target = name; includeValues = true
+            case .template: target = draft.environmentName; includeValues = false
+            case .unknown: target = draft.environmentName; includeValues = true
+            }
+            let result = draft.importEntries(file.entries, into: target, includeValues: includeValues)
+            counts[target, default: 0] += result.added + result.filled
+            kept += result.skipped
+            if firstTarget == nil { firstTarget = target }
+        }
+        // Show what was just imported.
+        if let firstTarget, counts[draft.environmentName, default: 0] == 0 { draft.environmentName = firstTarget }
+        selection.removeAll()
+        importError = nil
+
+        let order = ProjectEnvironment.defaultNames
+        let parts = counts.sorted { (order.firstIndex(of: $0.key) ?? 9, $0.key) < (order.firstIndex(of: $1.key) ?? 9, $1.key) }
+            .map { "\($0.value) to \($0.key)" }
+        var notice = parts.isEmpty || counts.values.allSatisfy({ $0 == 0 }) ? "Nothing new to import." : "Imported \(parts.joined(separator: ", "))."
+        if !kept.isEmpty {
+            notice += " Kept \(kept.count) you already had: \(kept.prefix(3).joined(separator: ", "))\(kept.count > 3 ? "…" : "")."
+        }
+        importNotice = notice
+    }
 
     private func save(includeValues: Bool) {
         guard draft.canCreate else { return }
@@ -262,7 +341,7 @@ struct NewProjectForm: View {
 
     /// Asks before throwing away typed input; closes right away otherwise.
     private func cancel() {
-        let hasInput = !draft.trimmedName.isEmpty || !draft.summary.isEmpty || !draft.link.isEmpty || !draft.filledRows.isEmpty
+        let hasInput = !draft.trimmedName.isEmpty || !draft.summary.isEmpty || !draft.link.isEmpty || !draft.environmentsWithRows.isEmpty
         if hasInput { confirmDiscard = true } else { onClose() }
     }
 

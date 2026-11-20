@@ -86,17 +86,40 @@ struct LibraryView: View {
 
     @State private var expanded: Set<String> = []
     @FocusState private var addNameFocused: Bool
+    @State private var pendingImport: PendingLibraryImport?
+    @State private var importMessage: String?
+    @State private var importFailed = false
+    @State private var dropTargeted = false
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.Space.l) {
-                    VStack(alignment: .leading, spacing: DS.Space.xxs) {
-                        Text("Library").font(DS.Font.pageTitle)
-                        Text(total == 0
-                             ? "Keys you reuse across projects — a personal OpenAI key, a Stripe test key. Not tied to any project."
-                             : "\(total) \(total == 1 ? "key" : "keys") across \(groups.count) \(groups.count == 1 ? "provider" : "providers")")
-                            .foregroundStyle(.secondary)
+                    HStack(alignment: .top, spacing: DS.Space.m) {
+                        VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                            Text("Library").font(DS.Font.pageTitle)
+                            Text(total == 0
+                                 ? "Keys you reuse across projects — a personal OpenAI key, a Stripe test key. Not tied to any project."
+                                 : "\(total) \(total == 1 ? "key" : "keys") across \(groups.count) \(groups.count == 1 ? "provider" : "providers")")
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button {
+                            open(EnvFilePicker.choose(message: "Choose .env files. Their keys go to the Library under the provider you pick next."))
+                        } label: {
+                            Label("Import .env…", systemImage: "square.and.arrow.down")
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .symbolMotion(.bounceDown)
+                        .clickableCursor()
+                        .help("Add the keys of .env files to the Library — or drop the files here")
+                    }
+
+                    if let importMessage {
+                        Label(importMessage, systemImage: importFailed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                            .font(.callout)
+                            .foregroundStyle(importFailed ? DS.Status.danger : DS.Status.success)
                     }
 
                     if groups.isEmpty && total > 0 {
@@ -131,6 +154,43 @@ struct LibraryView: View {
                 .overlay(alignment: .top) { Divider() }
         }
         .onChange(of: focusRequest) { _, _ in addNameFocused = true }
+        .dropDestination(for: URL.self) { urls, _ in
+            open(urls)
+            return !urls.isEmpty
+        } isTargeted: { dropTargeted = $0 }
+        .overlay {
+            if dropTargeted {
+                RoundedRectangle(cornerRadius: DS.Radius.large, style: .continuous)
+                    .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                    .background(Color.accentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.large, style: .continuous))
+                    .overlay { Label("Drop .env files to add them to the Library", systemImage: "square.and.arrow.down").font(DS.Font.sectionTitle) }
+                    .padding(DS.Space.s)
+                    .allowsHitTesting(false)
+            }
+        }
+        .sheet(item: $pendingImport) { pending in
+            LibraryImportSheet(pending: pending) { summary in
+                importMessage = summary
+                importFailed = false
+            }
+        }
+    }
+
+    /// Reads the files, then asks for the provider in the import sheet.
+    private func open(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        do {
+            let files = try EnvFilePicker.read(urls)
+            guard files.contains(where: { !$0.entries.isEmpty }) else {
+                importMessage = "No variables found in \(files.map(\.name).joined(separator: ", "))."
+                importFailed = true
+                return
+            }
+            pendingImport = PendingLibraryImport(files: files)
+        } catch {
+            importMessage = error.localizedDescription
+            importFailed = true
+        }
     }
 }
 

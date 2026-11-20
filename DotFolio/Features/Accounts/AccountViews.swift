@@ -374,27 +374,33 @@ struct AccountFields: View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.m, verticalSpacing: DS.Space.s) {
             GridRow {
                 label("Login")
-                TextField("", text: $draft.login, prompt: Text("email or username"))
+                TextField("", text: $draft.login)
+                    .fieldHint("The email or username you sign in with.")
             }
             GridRow {
-                label("Display name")
-                TextField("", text: $draft.displayName, prompt: Text("e.g. Work, Personal, Client X (optional)"))
+                label("Display name", optional: true)
+                TextField("", text: $draft.displayName)
+                    .fieldHint("Tells logins apart, e.g. Work, Personal, Client X.")
             }
             GridRow {
                 label("Providers")
                 ServiceChips(services: $draft.services)
             }
             GridRow {
-                label("Notes")
-                TextField("", text: $draft.notes, prompt: Text("Optional"), axis: .vertical)
+                label("Notes", optional: true)
+                TextField("", text: $draft.notes, axis: .vertical)
                     .lineLimit(1...4)
             }
         }
         .textFieldStyle(.roundedBorder)
     }
 
-    private func label(_ text: String) -> some View {
-        Text(text).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
+    private func label(_ text: String, optional: Bool = false) -> some View {
+        HStack(spacing: DS.Space.xs) {
+            Text(text).foregroundStyle(.secondary)
+            if optional { Text("(optional)").foregroundStyle(.tertiary) }
+        }
+        .gridColumnAlignment(.trailing)
     }
 }
 
@@ -431,9 +437,11 @@ struct ServiceChips: View {
             }
 
             if addingCustom {
-                TextField("", text: $customName, prompt: Text("Provider name"))
+                TextField("", text: $customName)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 160)
+                    .accessibilityLabel("Provider name")
+                    .fieldHint("Provider name · Return to add")
                     .onSubmit(addCustom)
                     .onExitCommand { addingCustom = false; customName = "" }
             } else {
@@ -546,11 +554,10 @@ private struct ServiceProjectsBlock: View {
                 .panel(radius: DS.Radius.medium)
             }
 
-            HStack(spacing: DS.Space.s) {
-                TextField("", text: $newName, prompt: Text("Project name"))
-                TextField("", text: $newID, prompt: Text("Project ID"))
-                    .font(.body.monospaced())
-                TextField("", text: $newURL, prompt: Text(verbatim: "Console URL (optional)"))
+            HStack(alignment: .bottom, spacing: DS.Space.s) {
+                LabeledField("Project name") { TextField("", text: $newName) }
+                LabeledField("Project ID") { TextField("", text: $newID).font(.body.monospaced()) }
+                LabeledField("Console URL (optional)") { TextField("", text: $newURL) }
                 Button("Add", action: add)
                     .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
                     .clickableCursor()

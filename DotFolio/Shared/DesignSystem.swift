@@ -195,6 +195,22 @@ struct Card<Content: View>: View {
     }
 }
 
+// MARK: - Form fields
+
+extension View {
+    /// The app's way to explain an input: a small caption line under the
+    /// field. Inputs never carry placeholder text.
+    func fieldHint(_ text: String, isError: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: DS.Space.xxs) {
+            self
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(isError ? AnyShapeStyle(DS.Status.danger) : AnyShapeStyle(.secondary))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 // MARK: - Chips
 
 /// Shared chip look: same font, height, padding and capsule for every chip.

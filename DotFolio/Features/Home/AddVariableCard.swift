@@ -51,28 +51,28 @@ struct AddVariableCard: View {
 
             ProportionalRow(fractions: [0.3, 0.7]) {
                 LabeledField("Name") {
-                    TextField("", text: $newKey, prompt: Text("API_KEY"))
+                    TextField("", text: $newKey)
                         .font(.system(.body, design: .monospaced))
                         .focused(nameFocused)
                 }
                 LabeledField("Value") {
-                    SecureField("", text: $newValue, prompt: Text("Paste the secret value"))
+                    SecureField("", text: $newValue)
                         .font(.system(.body, design: .monospaced))
                 }
             }
 
             ProportionalRow(fractions: [0.15, 0.15, 0.25, 0.45]) {
                 LabeledField("Service") {
-                    TextField("", text: $newCategory, prompt: Text(ServiceCategory.suggested(forProvider: newService)?.displayName ?? "e.g. Database"))
+                    TextField("", text: $newCategory)
                 }
                 LabeledField("Provider") {
-                    TextField("", text: $newService, prompt: Text("e.g. Supabase"))
+                    TextField("", text: $newService)
                 }
                 LabeledField("Account") {
-                    TextField("", text: $newAccount, prompt: Text("email or username"))
+                    TextField("", text: $newAccount)
                 }
                 LabeledField("Link") {
-                    TextField("", text: $newLink, prompt: Text(verbatim: "https://console.example.com (optional)"))
+                    TextField("", text: $newLink)
                 }
             }
 
@@ -122,7 +122,7 @@ struct AddVariableCard: View {
 }
 
 /// Small caption above a field.
-private struct LabeledField<Field: View>: View {
+struct LabeledField<Field: View>: View {
     let title: String
     @ViewBuilder let field: Field
 

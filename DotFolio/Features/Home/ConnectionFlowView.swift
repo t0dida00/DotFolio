@@ -180,7 +180,7 @@ private struct GitLabHostStep: View {
 
             VStack(alignment: .leading, spacing: DS.Space.xs) {
                 Text("GitLab address").font(.callout.weight(.medium))
-                TextField("https://gitlab.example.com", text: $model.gitLabHost)
+                TextField("", text: $model.gitLabHost)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)
                     .frame(maxWidth: 360)
