@@ -7,6 +7,16 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.3.0", highlights: [
+            ("square.and.arrow.down", "Import .env files",
+             "New Project: pick or drop .env files and the table fills itself. The file name picks the environment — .env.production goes to production, .env and .env.local to development. Example files bring names only."),
+            ("books.vertical", "Import into the Library",
+             "Drop .env files on the Library, choose a provider, and every key is added with its value in your Keychain. Names already there are never overwritten."),
+            ("rectangle.split.3x1", "One table per environment",
+             "In New Project, development, staging and production each keep their own variables, and Create Project saves all of them."),
+            ("text.below.photo", "Clearer forms",
+             "No more grey example text inside fields: a short line under each field explains what goes there."),
+        ]),
         Entry(version: "0.2.0", highlights: [
             ("books.vertical", "Libraries",
              "A library for keys you reuse across projects — a personal OpenAI key, a Stripe test key. Grouped by provider, stored in your Keychain, not tied to any project."),
