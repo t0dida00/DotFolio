@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.5.3", highlights: [
+            ("chart.bar", "Top 5 in the Overview",
+             "Providers in use, Services in use and Accounts list their top 5, with a count of the rest underneath."),
+        ]),
         Entry(version: "0.5.2", highlights: [
             ("person.crop.circle", "Simpler Accounts ranking",
              "The Overview’s Accounts card drops the Providers column and ranks accounts by the projects, then the variables, that use them."),
