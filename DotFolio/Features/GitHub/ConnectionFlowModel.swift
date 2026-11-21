@@ -7,6 +7,8 @@ import Foundation
 import Observation
 import SwiftData
 
+// Size note: One state machine for sign-in and repo import (steps share the client, token and progress), so it stays in one file even though it is over ~350 lines.
+
 /// "Connect your repo host" flow: GitHub device-flow sign-in, picking repos,
 /// and importing them as projects.
 @Observable

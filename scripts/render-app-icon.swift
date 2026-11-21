@@ -1,5 +1,5 @@
 // Renders the app icon master (1024×1024 PNG) from the same design as
-// AppMark (DotFolio/Features/Home/HomeView.swift). Regenerate the icon set:
+// AppMark (DotFolio/Shared/Brand/AppMark.swift). Regenerate the icon set:
 //
 //   swift scripts/render-app-icon.swift /tmp/icon-1024.png
 //   S=DotFolio/Resources/Assets.xcassets/AppIcon.appiconset
@@ -18,7 +18,7 @@ import AppKit
 extension Color {
     init(hex: UInt32) { self.init(red: Double((hex >> 16) & 0xFF)/255, green: Double((hex >> 8) & 0xFF)/255, blue: Double(hex & 0xFF)/255) }
 }
-/// Same proportions as AppMark (DotFolio/Features/Home/HomeView.swift), laid
+/// Same proportions as AppMark (DotFolio/Shared/Brand/AppMark.swift), laid
 /// a 1024 canvas: a 904 pt tile centered (60 pt margins), a bit larger than
 /// Apple's 824 pt grid so it reads as big as other icons in the Dock.
 struct Icon: View {

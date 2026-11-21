@@ -6,9 +6,13 @@ Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project sec
 
 ## Layout
 
-- `DotFolio/` — app target (SwiftUI views). Generated Xcode project: run `xcodegen generate` after adding/removing files; never edit `DotFolio.xcodeproj` by hand.
+- `DotFolio/` — app target (SwiftUI views only). Generated Xcode project: run `xcodegen generate` after adding/removing files; never edit `DotFolio.xcodeproj` by hand.
+  - `App/` — entry point, root view, menu commands (`AppNavigation`), updates, release notes.
+  - `Features/<Feature>/` — one folder per area: `Home` (window shell: `ProjectBrowser`, toolbar, brand), `Projects`, `Variables`, `Library`, `Accounts`, `Overview`, `GitHub`, `Import`, `Maintenance`.
+  - `Shared/` — used by several features: `DesignSystem/` (tokens and components), `Brand/` (logo, provider/project/account tiles and styles), `Platform/` (AppKit/SwiftUI helpers), `Services/` (Keychain env, clipboard, folders, pickers).
+  - One main view per file, ~350 lines max (a file that must stay bigger says why in a "Size note" comment). A view used by more than one feature goes to `Shared/`. Logic that can be tested goes to `DotFolioKit` (e.g. `TabStrip`, `Library.groups`).
 - `Packages/DotFolioKit/` — logic, all unit-tested:
-  - `DotFolioModels` (SwiftData models, search, overview stats)
+  - `DotFolioModels` (SwiftData models, search, overview stats, source guessing, tab rules)
   - `DotFolioSecurity` (Keychain store, Touch ID session lock)
   - `DotFolioEnv` (.env parser/exporter, .gitignore check)
   - `DotFolioIntegrations` (GitHub client, read-only)
@@ -26,7 +30,7 @@ Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project sec
 - Security: secret values live only in the Keychain, never in SwiftData, logs or UserDefaults. Repo access is read-only (GET only). Keychain items are removed before the metadata that references them.
 - Put logic in `DotFolioKit` with tests; keep views thin.
 
-## Consistency (use `DotFolio/Shared/DesignSystem.swift`)
+## Consistency (use `DotFolio/Shared/DesignSystem/`)
 
 - Corner radius: only `DS.Radius.small / .medium / .large` — no literal numbers.
 - Spacing/padding: `DS.Space` (4pt grid: 2·4·8·12·16·20·24·32); only window-chrome/hero insets ≥ 40 may be literal.

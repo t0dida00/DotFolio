@@ -100,6 +100,21 @@ public enum Library {
         }
     }
 
+    /// Rows grouped by provider (case-insensitive; "" = no provider) for the
+    /// Library: a Library key's spelling names the group, keys inside follow
+    /// `displayOrder`, groups are alphabetical with "no provider" last.
+    public static func groups(_ keys: [Variable]) -> [(provider: String, keys: [Variable])] {
+        Dictionary(grouping: keys) { $0.serviceLabel.lowercased() }.values
+            .map { keys in
+                (provider: keys.first(where: \.inLibrary)?.serviceLabel ?? keys[0].serviceLabel,
+                 keys: keys.sorted(by: displayOrder))
+            }
+            .sorted { a, b in
+                if a.provider.isEmpty != b.provider.isEmpty { return !a.provider.isEmpty }
+                return a.provider.localizedStandardCompare(b.provider) == .orderedAscending
+            }
+    }
+
     /// "Library" or "Shop · production".
     public static func origin(of v: Variable) -> String {
         guard !v.inLibrary, let env = v.environment else { return "Library" }

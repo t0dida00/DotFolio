@@ -5,6 +5,8 @@ import DotFolioSecurity
 import SwiftData
 import SwiftUI
 
+// Size note: One form (fields, per-environment draft table, import) whose parts share the draft state, so it stays in one file.
+
 /// "New Project", shown inline in the right panel: name, optional description
 /// and link, and a .env table (#, Name, Value, Service, Provider, Account, Link).
 struct NewProjectForm: View {
