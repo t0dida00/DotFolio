@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "2.2.0", highlights: [
+            ("arrow.clockwise", "Reload from Folder",
+             "Changed a local project's .env files? The ↻ button next to edit reads them again and lists what changed in each environment — new names, changed values and sources, names no longer in the file — for you to review before anything is applied. Values are compared with Touch ID and never shown; nothing is deleted unless you tick it."),
+        ]),
         Entry(version: "2.1.1", highlights: [
             ("command", "A simpler ⌘K",
              "The palette now just finds projects and keys and opens them; copy from the tables or the menu bar, and run commands from the menus."),
