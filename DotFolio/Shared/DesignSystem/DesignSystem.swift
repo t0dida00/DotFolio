@@ -218,7 +218,6 @@ struct LinkText: View {
     }
 }
 
-
 // MARK: - Field titles
 
 extension Text {
