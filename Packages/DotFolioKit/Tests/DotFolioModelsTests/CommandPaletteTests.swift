@@ -33,4 +33,21 @@ struct CommandPaletteTests {
         #expect(CommandPalette.results(query: "  ", projects: [shop], variables: [key]).isEmpty)
         #expect(stripe.hasValue == false) // values are never looked at
     }
+
+    @Test func sameNameFollowsEnvironmentOrder() throws {
+        let context = ModelContext(try DotFolioSchema.makeContainer(inMemory: true))
+        let shop = Project.create(name: "Shop", in: context)
+        var vars: [Variable] = []
+        for env in shop.sortedEnvironments.reversed() {   // inserted production first
+            let v = Variable(key: "DATABASE_URL", environment: nil)
+            context.insert(v)
+            v.environment = env
+            vars.append(v)
+        }
+        let order = CommandPalette.results(query: "database", projects: [], variables: vars).compactMap { item -> String? in
+            if case .variable(let v) = item { return v.environment?.name }
+            return nil
+        }
+        #expect(order == ["development", "staging", "production"])
+    }
 }

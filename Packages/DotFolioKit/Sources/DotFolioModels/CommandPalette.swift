@@ -84,27 +84,32 @@ public enum CommandPalette {
                                includeActions: Bool = true, limit: Int = 12) -> [Item] {
         let query = rawQuery.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return [] }
-        var scored: [(rank: Int, kind: Int, name: String, item: Item)] = []
+        // Ties: the same name in several environments stays together, by
+        // project, then development → staging → production.
+        var scored: [(rank: Int, kind: Int, name: String, place: String, order: Int, item: Item)] = []
 
         for project in projects {
             let best = [rank(project.name, query), rank(project.repoFullName, query).map { max($0, 2) }]
                 .compactMap { $0 }.min()
-            if let best { scored.append((best, 0, project.name, .project(project))) }
+            if let best { scored.append((best, 0, project.name, "", 0, .project(project))) }
         }
         for v in variables {
             let other = [v.displayService, v.displayCategory, v.account?.login ?? "", v.environment?.project?.name ?? ""]
                 .compactMap { rank($0, query) }.min().map { _ in 3 }
             if let best = [rank(v.key, query), other].compactMap({ $0 }).min() {
-                scored.append((best, 1, v.key, .variable(v)))
+                scored.append((best, 1, v.key, v.environment?.project?.name ?? "", v.environment?.sortOrder ?? -1, .variable(v)))
             }
         }
         if includeActions {
             for action in Action.allCases {
-                if let r = rank(action.title, query) { scored.append((r, 2, action.title, .action(action))) }
+                if let r = rank(action.title, query) { scored.append((r, 2, action.title, "", 0, .action(action))) }
             }
         }
         return scored
-            .sorted { ($0.rank, $0.kind, $0.name.lowercased()) < ($1.rank, $1.kind, $1.name.lowercased()) }
+            .sorted {
+                ($0.rank, $0.kind, $0.name.lowercased(), $0.place.lowercased(), $0.order)
+                    < ($1.rank, $1.kind, $1.name.lowercased(), $1.place.lowercased(), $1.order)
+            }
             .prefix(limit)
             .map(\.item)
     }

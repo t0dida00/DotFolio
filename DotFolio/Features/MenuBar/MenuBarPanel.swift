@@ -139,10 +139,7 @@ private struct MenuBarRow: View {
                     Text(item.title)
                         .font(isVariable ? .callout.monospaced() : .callout)
                         .lineLimit(1)
-                    Text(item.subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    PaletteSubtitle(item: item)
                 }
                 Spacer(minLength: DS.Space.s)
                 if didCopy {
