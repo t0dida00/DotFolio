@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.6.3", highlights: [
+            ("square.grid.2x2", "One icon style",
+             "Every icon tile — accounts, providers, the Overview, dialogs and sign-in — now has the app icon’s proportions: the same rounded corners and a larger symbol."),
+        ]),
         Entry(version: "0.6.2", highlights: [
             ("square.grid.2x2", "Clearer project icons",
              "Project icons follow the app icon’s proportions: rounder corners and a larger GitHub, GitLab, local or hand-made mark."),
