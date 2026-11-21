@@ -7,6 +7,12 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.6.0", highlights: [
+            ("books.vertical", "Every key in the Library",
+             "The Library now lists the keys of all your projects next to its own, one row per environment, with a From column. Import a project and its keys appear; delete it and they go. Keys you added to the Library yourself always stay."),
+            ("lock", "Library opens read-only",
+             "Library tables are locked until you turn on Edit. Double-click a key to copy it as a .env line."),
+        ]),
         Entry(version: "0.5.4", highlights: [
             ("app.badge", "A real app icon",
              "DOTFOLIO has its own icon in the Dock, Finder and Launchpad, and the logo inside the app matches it."),
