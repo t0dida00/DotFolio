@@ -7,6 +7,14 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.7.0", highlights: [
+            ("wand.and.stars", "Smarter sources",
+             "DOTFOLIO now recognizes over 150 providers — Groq, xAI, Clerk, Convex, Railway, Contentful, LaunchDarkly, Open-Meteo and more — plus well-known names like KV_REST_API_URL and AUTH_SECRET and more key formats. Suggest Sources opens once to fill the empty ones you already have."),
+            ("square.grid.2x2", "Four new services",
+             "Messaging (Twilio, Slack, OneSignal), CMS (Contentful, Sanity), Feature flags (LaunchDarkly, Statsig) and Data API (Open-Meteo, OpenWeather)."),
+            ("sparkles", "Icons for every provider",
+             "A provider without its own icon shows the icon and color of what it’s for — Hugging Face gets AI’s sparkles."),
+        ]),
         Entry(version: "0.6.3", highlights: [
             ("square.grid.2x2", "One icon style",
              "Every icon tile — accounts, providers, the Overview, dialogs and sign-in — now has the app icon’s proportions: the same rounded corners and a larger symbol."),
