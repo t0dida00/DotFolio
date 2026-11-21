@@ -124,7 +124,9 @@ struct ProjectBrowser: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     case .libraries:
                         LibraryView(groups: library.shown, total: library.all.reduce(0) { $0 + $1.keys.count },
-                                    focusRequest: libraryFocusRequest, scope: libraryScope)
+                                    focusRequest: libraryFocusRequest, scope: libraryScope,
+                                    nothingSelected: !library.all.isEmpty && libraryProvider != nil
+                                        && !library.all.contains { $0.id == libraryProvider })
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
