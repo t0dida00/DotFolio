@@ -7,6 +7,16 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "2.0.0", highlights: [
+            ("square.stack.3d.up", "DOTFOLIO 2",
+             "A rebuilt foundation: the app is reorganized feature by feature into small, focused pieces, with more of its logic tested. Your projects, keys and Keychain values carry over unchanged."),
+            ("macwindow", "A native toolbar",
+             "Sort and search sit in the window toolbar after the traffic lights, and slide in with the menu bar in full screen."),
+            ("rectangle.split.3x1", "Steady filters",
+             "Projects · Accounts · Libraries and the All · Git · Local and Library filters have equal, fixed segments that no longer shift when you switch."),
+            ("books.vertical", "Clearer Library",
+             "Empty and filtered states sit in the middle, and the Library says so when no provider is picked. The .env drop zone has a light violet background."),
+        ]),
         Entry(version: "0.7.4", highlights: [
             ("macwindow", "A real Mac toolbar",
              "Sort and search now sit in the window's toolbar, right after the traffic lights. In full screen they hide with the menu bar and slide back in when you point at the top of the screen."),
