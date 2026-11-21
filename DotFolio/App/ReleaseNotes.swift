@@ -7,6 +7,12 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "2.1.1", highlights: [
+            ("command", "A simpler ⌘K",
+             "The palette now just finds projects and keys and opens them; copy from the tables or the menu bar, and run commands from the menus."),
+            ("circle.fill", "Environment colors",
+             "Keys in ⌘K and the menu bar show their environment's color dot, listed development → staging → production."),
+        ]),
         Entry(version: "2.1.0", highlights: [
             ("command", "Go anywhere with ⌘K",
              "Type part of a project, key or command. ↩ opens it, ⌘C copies a key's value and ⇧⌘C its .env line. Only names and sources are searched, never values."),
