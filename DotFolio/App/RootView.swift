@@ -10,8 +10,9 @@ struct RootView: View {
     @Environment(AppNavigation.self) private var navigation
     @Environment(UpdateCenter.self) private var updates
     @State private var flow = ConnectionFlowModel()
-    /// Suggest Sources opens by itself once, the first time this version runs.
-    @AppStorage("didReviewSourceSuggestions") private var didReviewSources = false
+    /// Suggest Sources opens by itself once per guesser generation (v2: the
+    /// larger provider catalog), so older variables get the new guesses too.
+    @AppStorage("didReviewSourceSuggestions.v2") private var didReviewSources = false
 
     var body: some View {
         @Bindable var navigation = navigation

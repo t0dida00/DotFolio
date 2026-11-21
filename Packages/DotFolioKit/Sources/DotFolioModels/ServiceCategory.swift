@@ -3,7 +3,8 @@ import Foundation
 /// What a variable is for (Database, Cache, Storage…), as opposed to who
 /// provides it (Supabase, Redis, AWS…).
 public enum ServiceCategory: String, CaseIterable, Identifiable, Sendable {
-    case database, cache, storage, auth, payments, email, analytics, monitoring, hosting, maps, search, queue, ai, other
+    case database, cache, storage, auth, payments, email, messaging, analytics, monitoring, hosting, maps, search, queue, ai,
+         cms, flags, dataAPI, other
 
     public var id: String { rawValue }
 
@@ -22,6 +23,10 @@ public enum ServiceCategory: String, CaseIterable, Identifiable, Sendable {
         case .search: "Search"
         case .queue: "Queue"
         case .ai: "AI"
+        case .messaging: "Messaging"
+        case .cms: "CMS"
+        case .flags: "Feature flags"
+        case .dataAPI: "Data API"
         case .other: "Other"
         }
     }
@@ -34,6 +39,10 @@ public enum ServiceCategory: String, CaseIterable, Identifiable, Sendable {
             "authentication": .auth, "login": .auth, "billing": .payments, "payment": .payments,
             "mail": .email, "smtp": .email, "logging": .monitoring, "logs": .monitoring, "errors": .monitoring,
             "llm": .ai, "cdn": .hosting, "deploy": .hosting, "queues": .queue, "jobs": .queue,
+            "sms": .messaging, "push": .messaging, "chat": .messaging, "notifications": .messaging, "notification": .messaging,
+            "content": .cms, "headless cms": .cms,
+            "flags": .flags, "feature flag": .flags, "feature flags": .flags, "featureflags": .flags, "experiments": .flags,
+            "data api": .dataAPI, "dataapi": .dataAPI, "api": .dataAPI, "weather": .dataAPI, "geocoding": .dataAPI,
         ]
         if let match = ServiceCategory.allCases.first(where: { $0.displayName.lowercased() == t || $0.rawValue == t }) {
             self = match

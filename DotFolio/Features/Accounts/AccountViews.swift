@@ -23,8 +23,11 @@ extension ServiceType {
     }
 
     /// Symbol for any service name, custom ones included.
+    /// A provider's icon: its own for the 8 known ones, otherwise the icon of
+    /// what it's for (Hugging Face → AI ✨), else the generic one.
     static func symbol(for name: String) -> String {
-        ServiceType(matching: name)?.symbol ?? ServiceType.custom.symbol
+        if let known = ServiceType(matching: name) { return known.symbol }
+        return ServiceCategory.suggested(forProvider: name)?.symbol ?? ServiceType.custom.symbol
     }
 
     /// Hue for a provider's icon tile.
@@ -41,8 +44,10 @@ extension ServiceType {
         }
     }
 
+    /// Same rule as `symbol(for:)` for the hue.
     static func tint(for name: String) -> Color {
-        (ServiceType(matching: name) ?? .custom).tint
+        if let known = ServiceType(matching: name) { return known.tint }
+        return ServiceCategory.suggested(forProvider: name)?.tint ?? ServiceType.custom.tint
     }
 }
 
@@ -62,6 +67,10 @@ extension ServiceCategory {
         case .search: "magnifyingglass"
         case .queue: "tray.2"
         case .ai: "sparkles"
+        case .messaging: "message"
+        case .cms: "doc.richtext"
+        case .flags: "flag"
+        case .dataAPI: "globe"
         case .other: "square.dashed"
         }
     }
@@ -70,16 +79,18 @@ extension ServiceCategory {
         (ServiceCategory(matching: name) ?? .other).symbol
     }
 
-    /// Grouped hues: data → blue, money → green, identity & AI → violet,
-    /// comms → magenta, observability → orange, infrastructure → aqua.
+    /// Grouped hues (existing palette only): data & content → blue, money →
+    /// green, identity & AI → violet, comms → magenta, observability & flags →
+    /// orange, infrastructure, maps & data APIs → aqua.
     var tint: Color {
         switch self {
         case .database, .cache, .storage, .search, .queue: DS.Palette.blue
         case .payments: DS.Palette.green
         case .auth, .ai: DS.Palette.violet
-        case .email: DS.Palette.magenta
-        case .analytics, .monitoring: DS.Palette.orange
-        case .hosting, .maps: DS.Palette.aqua
+        case .email, .messaging: DS.Palette.magenta
+        case .analytics, .monitoring, .flags: DS.Palette.orange
+        case .hosting, .maps, .dataAPI: DS.Palette.aqua
+        case .cms: DS.Palette.blue
         case .other: DS.Palette.neutral
         }
     }
