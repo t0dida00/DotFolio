@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.5.2", highlights: [
+            ("person.crop.circle", "Simpler Accounts ranking",
+             "The Overview’s Accounts card drops the Providers column and ranks accounts by the projects, then the variables, that use them."),
+        ]),
         Entry(version: "0.5.1", highlights: [
             ("rectangle.center.inset.filled", "Centered sign-in and import",
              "Signing in to GitHub, the loading steps, choosing repositories and the import summary now sit in the middle of the window."),
