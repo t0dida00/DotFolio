@@ -42,7 +42,7 @@ struct OverviewDashboard: View {
                     Card(title: "Values filled by environment", subtitle: "Variables with a stored value") {
                         EnvironmentMeters(environments: stats.environments)
                     }
-                    Card(title: "Accounts", subtitle: "Ranked by providers, then projects",
+                    Card(title: "Accounts", subtitle: "Ranked by projects, then variables",
                          trailing: AnyView(Button("Show All", action: onShowAccounts).buttonStyle(.link).clickableCursor())) {
                         AccountRanking(ranks: stats.accountRanking, onOpen: onOpenAccount)
                     }
@@ -287,8 +287,7 @@ private struct EnvironmentMeters: View {
 
 // MARK: - Account ranking
 
-/// Text-only ranking table spanning the card: #, Account, Services (names),
-/// Projects, Variables.
+/// Text-only ranking table spanning the card: #, Account, Projects, Variables.
 /// Top 5 accounts; each row opens that account in the Accounts tab.
 private struct AccountRanking: View {
     let ranks: [OverviewStats.AccountRank]
@@ -309,7 +308,6 @@ private struct AccountRanking: View {
                 HStack(spacing: DS.Space.s) {
                     Text("#").frame(width: Width.index, alignment: .leading)
                     Text("Account").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Providers").frame(maxWidth: .infinity, alignment: .leading)
                     Text("Projects").frame(width: Width.projects, alignment: .trailing)
                     Text("Variables").frame(width: Width.variables, alignment: .trailing)
                     Color.clear.frame(width: Width.chevron, height: 1)
@@ -328,10 +326,6 @@ private struct AccountRanking: View {
                         Text(rank.account.login)
                             .lineLimit(1)
                             .truncationMode(.middle)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(rank.account.services.isEmpty ? "—" : rank.account.services.joined(separator: ", "))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Text("\(rank.projects)").monospacedDigit()
                             .frame(width: Width.projects, alignment: .trailing)

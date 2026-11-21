@@ -125,7 +125,8 @@ public struct OverviewStats {
         accountRanking = accounts
             .map { AccountRank(account: $0, services: $0.services.count, projects: $0.linkedProjects.count,
                                variables: VariableGroup.group($0.allLinkedVariables).count) }
-            .sorted { ($0.services, $0.projects, $0.variables) > ($1.services, $1.projects, $1.variables) }
+            // Most-used first: projects, then variables; ties by login.
+            .sorted { ($0.projects, $0.variables, $1.account.login) > ($1.projects, $1.variables, $0.account.login) }
 
         attention = projects
             .map { p in
