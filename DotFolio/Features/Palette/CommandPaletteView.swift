@@ -3,22 +3,17 @@ import DotFolioSecurity
 import SwiftData
 import SwiftUI
 
-/// ⌘K: type part of a project, key or command and act on it without the
-/// mouse. ↑↓ move, ↩ opens (or runs), ⌘C copies a key's value, ⇧⌘C its
-/// `.env` line, Esc closes. Searches metadata only; values are read with
-/// Touch ID only when copied.
+/// ⌘K: type part of a project or key name and go to it without the mouse.
+/// ↑↓ move, ↩ opens, Esc closes. Searches metadata only and
+/// never reads a value; copying happens in the tables and the menu bar.
 struct CommandPaletteView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.secretStore) private var secrets
     @Environment(AppNavigation.self) private var navigation
-    @Environment(SessionLock.self) private var session
-    @Environment(UpdateCenter.self) private var updates
     @Query private var projects: [Project]
     @Query private var variables: [Variable]
 
     @State private var query = ""
     @State private var selected = 0
-    @State private var copiedID: String?
     @FocusState private var focused: Bool
 
     private var items: [CommandPalette.Item] {
@@ -27,7 +22,8 @@ struct CommandPaletteView: View {
             return ProjectSearch.recent(projects, limit: 6).map { .project($0) }
         }
         let keys = variables.filter { $0.inLibrary || $0.environment?.project != nil }
-        return CommandPalette.results(query: query, projects: projects, variables: keys)
+        // Projects and keys only: app commands stay in the menus.
+        return CommandPalette.results(query: query, projects: projects, variables: keys, includeActions: false)
     }
 
     var body: some View {
@@ -35,7 +31,7 @@ struct CommandPaletteView: View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Space.s) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Go to a project, key or command", text: $query)
+                TextField("Go to a project or key", text: $query)
                     .textFieldStyle(.plain)
                     .font(.title3)
                     .focused($focused)
@@ -64,7 +60,7 @@ struct CommandPaletteView: View {
                                     .padding(.top, DS.Space.xs)
                             }
                             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                                PaletteRow(item: item, isSelected: index == selected, didCopy: copiedID == item.id)
+                                PaletteRow(item: item, isSelected: index == selected)
                                     .id(item.id)
                                     .onTapGesture { selected = index; run(item) }
                                     .onHover { if $0 { selected = index } }
@@ -81,9 +77,8 @@ struct CommandPaletteView: View {
 
             Divider()
             HStack(spacing: DS.Space.l) {
+                Text("↑↓ Move")
                 Text("↩ Open")
-                Text("⌘C Copy value")
-                Text("⇧⌘C Copy .env line")
                 Spacer()
                 Text("esc Close")
             }
@@ -93,17 +88,6 @@ struct CommandPaletteView: View {
             .padding(.vertical, DS.Space.s)
         }
         .frame(width: 640)
-        .background {
-            // Copy shortcuts act on the selected key; they win over Edit ▸ Copy
-            // because the palette's own buttons handle them first.
-            Group {
-                Button("") { copySelected(.value, items: items) }
-                    .keyboardShortcut("c", modifiers: .command)
-                Button("") { copySelected(.line, items: items) }
-                    .keyboardShortcut("c", modifiers: [.command, .shift])
-            }
-            .hidden()
-        }
         .onAppear { focused = true }
         .onChange(of: query) { selected = 0 }
     }
@@ -128,50 +112,16 @@ struct CommandPaletteView: View {
                 navigation.libraryProviderToOpen = v.serviceLabel.lowercased()
             }
             dismiss()
-        case .action(let action):
+        case .action:
             dismiss()
-            perform(action)
-        }
-    }
-
-    /// Runs after the palette has closed, so sheets the action opens can show.
-    private func perform(_ action: CommandPalette.Action) {
-        let navigation = navigation, updates = updates
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(300))
-            switch action {
-            case .newProject: navigation.isRequestingNewProject = true
-            case .importFolder:
-                if let folder = ProjectFolderPicker.choose() { navigation.folderToImport = PendingFolder(url: folder) }
-            case .suggestSources: navigation.isSuggestingSources = true
-            case .verifyData: navigation.isVerifyingData = true
-            case .checkForUpdates: updates.checkForUpdates()
-            }
-        }
-    }
-
-    private func copySelected(_ what: KeyCopier.What, items: [CommandPalette.Item]) {
-        guard items.indices.contains(selected), case .variable(let v) = items[selected] else { return }
-        let id = items[selected].id
-        Task {
-            do {
-                if try await KeyCopier.copy(v, as: what, session: session, secrets: secrets) {
-                    withAnimation(.snappy) { copiedID = id }
-                    try? await Task.sleep(for: .seconds(1.5))
-                    if copiedID == id { withAnimation(.snappy) { copiedID = nil } }
-                }
-            } catch {
-                navigation.show(.failed("Couldn’t copy \(v.key)", ResultReport.describe(error)))
-            }
         }
     }
 }
 
-/// One result: icon, name, where it lives, and a tick right after a copy.
+/// One result: icon, name and where it lives.
 private struct PaletteRow: View {
     let item: CommandPalette.Item
     let isSelected: Bool
-    let didCopy: Bool
 
     var body: some View {
         HStack(spacing: DS.Space.m) {
@@ -180,18 +130,9 @@ private struct PaletteRow: View {
                 Text(item.title)
                     .font(isVariable ? .body.monospaced() : .body)
                     .lineLimit(1)
-                Text(item.subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                PaletteSubtitle(item: item)
             }
             Spacer(minLength: DS.Space.s)
-            if didCopy {
-                Label("Copied", systemImage: "checkmark")
-                    .font(.caption)
-                    .foregroundStyle(DS.Status.success)
-                    .transition(.opacity)
-            }
         }
         .padding(.horizontal, DS.Space.s)
         .padding(.vertical, DS.Space.xs)
