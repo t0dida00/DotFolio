@@ -96,12 +96,16 @@ struct LibraryView: View {
     let total: Int
     /// Bumped by the left column's "New Key" button to focus the add card.
     let focusRequest: Int
+    /// The left column's filter: "all", "library" or an environment name.
+    let scope: String
 
     @Environment(\.modelContext) private var context
     @Environment(AppNavigation.self) private var navigation
     @Environment(\.secretStore) private var secrets
 
     @State private var expanded: Set<String> = []
+    /// A lone provider starts open; this remembers that it was closed.
+    @State private var collapsedSingles: Set<String> = []
     @FocusState private var addNameFocused: Bool
     @State private var dropTargeted = false
 
@@ -139,8 +143,15 @@ struct LibraryView: View {
                         .help("Add the keys of .env files to the Library — or drop the files here")
                     }
 
-                    if groups.isEmpty && total > 0 {
-                        ContentUnavailableView.search
+                    if groups.isEmpty {
+                        if scope != "all" {
+                            ContentUnavailableView("No keys here", systemImage: "line.3.horizontal.decrease.circle",
+                                                   description: Text(scope == "library"
+                                                                     ? "The Library has no keys of its own yet."
+                                                                     : "No project has variables in \(scope)."))
+                        } else if total > 0 {
+                            ContentUnavailableView.search
+                        }
                     }
 
                     VStack(spacing: DS.Space.s) {
@@ -148,10 +159,14 @@ struct LibraryView: View {
                             LibrarySection(
                                 group: group,
                                 isExpanded: Binding(
-                                    get: { groups.count == 1 || expanded.contains(group.id) },
+                                    get: { groups.count == 1 ? !collapsedSingles.contains(group.id) : expanded.contains(group.id) },
                                     set: { open in
                                         withAnimation(.smooth(duration: 0.2)) {
-                                            if open { expanded.insert(group.id) } else { expanded.remove(group.id) }
+                                            if groups.count == 1 {
+                                                if open { collapsedSingles.remove(group.id) } else { collapsedSingles.insert(group.id) }
+                                            } else {
+                                                if open { expanded.insert(group.id) } else { expanded.remove(group.id) }
+                                            }
                                         }
                                     }
                                 )

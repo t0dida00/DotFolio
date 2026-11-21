@@ -30,6 +30,10 @@ struct LibraryEverythingTests {
         let rows = try everything()
         #expect(rows.map(Library.origin(of:)) == ["Library", "Shop · development", "Shop · staging", "Shop · production"])
         #expect(Library.filter(rows, query: "shop").count == 3)
+        #expect(rows.filter(Library.Scope.library.matches).map(Library.origin(of:)) == ["Library"])
+        #expect(rows.filter(Library.Scope(rawValue: "production").matches).map(Library.origin(of:)) == ["Shop · production"])
+        #expect(rows.filter(Library.Scope(rawValue: "all").matches).count == 4)
+        #expect(Library.Scope(rawValue: "staging").rawValue == "staging")
 
         context.delete(shop)
         try context.save()

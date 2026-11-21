@@ -24,6 +24,8 @@ struct ProjectBrowser: View {
     @State private var accountPendingDeletion: Account?
     @Query(filter: #Predicate<Variable> { $0.inLibrary }) private var libraryKeys: [Variable]
     /// Every project variable: the Library shows them too (one row per environment).
+    /// All · Library · development · staging · production (remembered).
+    @AppStorage("library.scope") private var libraryScope = "all"
     @Query(filter: #Predicate<Variable> { !$0.inLibrary }) private var projectKeys: [Variable]
     /// Provider shown in the Library (nil = all).
     @State private var libraryProvider: String?
@@ -100,6 +102,21 @@ struct ProjectBrowser: View {
                             .frame(maxHeight: .infinity)
                         accountsFooter
                     case .libraries:
+                        // Same place as Projects' All · Git · Local.
+                        Picker("Show", selection: $libraryScope) {
+                            Text("All").tag("all")
+                            Text("Library").tag("library")
+                            Text("Dev").tag("development")
+                            Text("Staging").tag("staging")
+                            Text("Prod").tag("production")
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .controlSize(.small)
+                        .padding(.horizontal, DS.Space.m)
+                        .padding(.bottom, DS.Space.xs)
+                        .help("Every key, only the Library’s own keys, or the project keys of development, staging or production")
+                        .clickableCursor()
                         LibraryProviderList(groups: library.all, total: library.all.reduce(0) { $0 + $1.keys.count },
                                             selection: $libraryProvider)
                             .frame(maxHeight: .infinity)
@@ -121,7 +138,8 @@ struct ProjectBrowser: View {
                         accountDetail
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     case .libraries:
-                        LibraryView(groups: library.shown, total: library.all.reduce(0) { $0 + $1.keys.count }, focusRequest: libraryFocusRequest)
+                        LibraryView(groups: library.shown, total: library.all.reduce(0) { $0 + $1.keys.count }, focusRequest: libraryFocusRequest,
+                                    scope: libraryScope)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
@@ -355,6 +373,7 @@ struct ProjectBrowser: View {
     /// Library keys plus every project's keys.
     private var libraryRows: [Variable] {
         Library.everything(libraryKeys: libraryKeys, projectVariables: projectKeys)
+            .filter(Library.Scope(rawValue: libraryScope).matches)
     }
 
     private func libraryGroups() -> (all: [LibraryGroup], shown: [LibraryGroup]) {

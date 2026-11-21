@@ -168,6 +168,7 @@ struct VariableTable: View {
             .width(28)
         }
         .tableStyle(.bordered(alternatesRowBackgrounds: true))
+        .tableRowHover()
         // Tall enough for every row, so it never scrolls vertically (the
         // surrounding column does); it still scrolls sideways when the
         // content-fit columns are wider than the panel.
@@ -234,8 +235,9 @@ struct VariableTable: View {
         return (
             name: TextWidth.fit(vars.map(\.key) + ["Name"], monospaced: true, extra: 20, min: 80, max: 280),
             // Project name + environment dot and name, or "Library".
-            origin: TextWidth.fit(vars.map { $0.inLibrary ? "Library" : "\($0.environment?.project?.name ?? "") development" } + ["From"],
-                                  extra: 44, min: 100, max: 260),
+            // Name, a gap, the 8 pt dot and the longest environment name.
+            origin: TextWidth.fit(vars.map { $0.inLibrary ? "Library" : "\($0.environment?.project?.name ?? "") production" } + ["From"],
+                                  extra: 64, min: 120, max: 300),
             // Dots (or a revealed value) + the edit icon.
             value: min(320, max(150, revealedWidest + 28)),
             category: TextWidth.fit(vars.map(\.displayCategory) + ["Service"], extra: 38, min: 90, max: 160),

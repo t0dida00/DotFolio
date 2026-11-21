@@ -1,6 +1,7 @@
 import AppKit
 import DotFolioCore
 import DotFolioModels
+import DotFolioSecurity
 import SwiftData
 import SwiftUI
 
@@ -187,6 +188,8 @@ struct AccountDetailView: View {
     /// "Used by" sections that are open (project IDs, or `libraryID`).
     /// Collapsed by default, unless there is a single section.
     @State private var expanded: Set<String> = []
+    /// A lone section starts open; this remembers that it was closed.
+    @State private var collapsedSingles: Set<String> = []
     private static let libraryID = "library"
 
     init(account: Account, onOpenProject: @escaping (Project) -> Void, onDelete: @escaping () -> Void) {
@@ -314,10 +317,14 @@ struct AccountDetailView: View {
 
     private func binding(for id: String, single: Bool) -> Binding<Bool> {
         Binding(
-            get: { single || expanded.contains(id) },
+            get: { single ? !collapsedSingles.contains(id) : expanded.contains(id) },
             set: { open in
                 withAnimation(.smooth(duration: 0.2)) {
-                    if open { expanded.insert(id) } else { expanded.remove(id) }
+                    if single {
+                        if open { collapsedSingles.remove(id) } else { collapsedSingles.insert(id) }
+                    } else {
+                        if open { expanded.insert(id) } else { expanded.remove(id) }
+                    }
                 }
             }
         )
@@ -733,21 +740,26 @@ private struct AccountKeysSection<Content: View>: View {
     }
 }
 
-/// The shared editable `VariableTable` for a set of keys, with a footer for
-/// deleting the selection and showing errors.
+/// The shared `VariableTable` for a set of keys: read-only until Edit is on
+/// (double-click a row to copy its .env line), with a footer for deleting the
+/// selection and showing errors.
 private struct AccountKeysTable: View {
     let keys: [Variable]
 
+    @Environment(SessionLock.self) private var session
     @State private var selection: Set<Variable.ID> = []
     @State private var pendingDeletion: [Variable] = []
     @State private var errorMessage: String?
     @State private var showsValues = false
+    /// The Edit switch: off = read-only.
+    @State private var editUnlocked = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.xs) {
             HStack {
                 Spacer()
                 ShowValuesButton(isOn: $showsValues, isEnabled: keys.contains(where: \.hasValue))
+                EditSwitch(isOn: $editUnlocked)
             }
             VariableTable(
                 variables: keys,
@@ -755,6 +767,7 @@ private struct AccountKeysTable: View {
                 pendingDeletion: $pendingDeletion,
                 errorMessage: $errorMessage,
                 showsValues: $showsValues,
+                isEditable: editUnlocked,
                 emptyText: "No keys"
             )
             HStack(spacing: DS.Space.s) {
@@ -762,18 +775,18 @@ private struct AccountKeysTable: View {
                     pendingDeletion = keys.filter { selection.contains($0.id) }
                 } label: { Image(systemName: "minus").frame(width: 24, height: 20) }
                     .buttonStyle(.borderless)
-                    .disabled(selection.isEmpty)
-                    .help("Delete selected")
+                    .disabled(selection.isEmpty || !editUnlocked)
+                    .help(editUnlocked ? "Delete selected" : "Turn on Edit to delete keys")
                     .accessibilityLabel("Delete selected keys")
                     .clickableCursor()
                 Spacer()
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(DS.Status.danger)
-                        .lineLimit(2)
-                }
+                Text(errorMessage ?? (editUnlocked ? " " : "Double-click a key to copy it as a .env line · turn on Edit to change it"))
+                    .font(.caption)
+                    .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
+                    .lineLimit(2)
             }
         }
+        // Locking the session puts the table back to read-only.
+        .onChange(of: session.isUnlocked) { _, unlocked in if !unlocked { editUnlocked = false } }
     }
 }

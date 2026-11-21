@@ -67,6 +67,39 @@ public enum Library {
         return (a.environment?.sortOrder ?? 0) < (b.environment?.sortOrder ?? 0)
     }
 
+    /// Which rows the Library shows: everything, only its own keys, or the
+    /// project keys of one environment. Stored as text ("all", "library",
+    /// or the environment name).
+    public enum Scope: Equatable, Sendable {
+        case all
+        case library
+        case environment(String)
+
+        public init(rawValue: String) {
+            switch rawValue {
+            case "", "all": self = .all
+            case "library": self = .library
+            default: self = .environment(rawValue)
+            }
+        }
+
+        public var rawValue: String {
+            switch self {
+            case .all: "all"
+            case .library: "library"
+            case .environment(let name): name
+            }
+        }
+
+        public func matches(_ v: Variable) -> Bool {
+            switch self {
+            case .all: true
+            case .library: v.inLibrary
+            case .environment(let name): !v.inLibrary && v.environment?.name.caseInsensitiveCompare(name) == .orderedSame
+            }
+        }
+    }
+
     /// "Library" or "Shop · production".
     public static func origin(of v: Variable) -> String {
         guard !v.inLibrary, let env = v.environment else { return "Library" }
