@@ -26,6 +26,9 @@ struct VariableTable: View {
     @Binding var showsValues: Bool
     /// False = locked: cells are plain text and rows can't be deleted.
     var isEditable = true
+    /// Library: a "From" column — Library, or the project and environment a
+    /// project key belongs to.
+    var showsOrigin = false
     var emptyText: String = "No variables yet — add one below."
     /// Extra right-click items for a single variable (e.g. "Add to Project").
     var extraMenu: ((Variable) -> AnyView)? = nil
@@ -66,6 +69,23 @@ struct VariableTable: View {
                 }
             }
             .width(min: widths.name, ideal: widths.name)
+
+            if showsOrigin {
+                TableColumn("From") { v in
+                    if v.inLibrary {
+                        Label("Library", systemImage: "books.vertical")
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    } else if let env = v.environment {
+                        HStack(spacing: DS.Space.xs) {
+                            Text(env.project?.name ?? "Project").lineLimit(1)
+                            EnvLabel(name: env.name).foregroundStyle(.secondary)
+                        }
+                        .help(Library.origin(of: v))
+                    }
+                }
+                .width(min: widths.origin, ideal: widths.origin)
+            }
 
             TableColumn("Value") { v in
                 valueCell(v)
@@ -199,17 +219,23 @@ struct VariableTable: View {
         ) {
             Button("Delete", role: .destructive) { delete(pendingDeletion) }
         } message: {
-            Text("Stored values are removed from your Keychain. This can’t be undone.")
+            let inProjects = pendingDeletion.filter { !$0.inLibrary && $0.environment != nil }.count
+            Text(inProjects == 0 || !showsOrigin
+                 ? "Stored values are removed from your Keychain. This can’t be undone."
+                 : "\(inProjects == 1 ? "It belongs to a project and is" : "\(inProjects) of them belong to projects and are") removed from there too. Stored values are removed from your Keychain. This can’t be undone.")
         }
     }
 
     // MARK: Column widths
 
-    private var columnWidths: (name: CGFloat, value: CGFloat, category: CGFloat, service: CGFloat, account: CGFloat, link: CGFloat) {
+    private var columnWidths: (name: CGFloat, origin: CGFloat, value: CGFloat, category: CGFloat, service: CGFloat, account: CGFloat, link: CGFloat) {
         let vars = variables
         let revealedWidest = revealed.values.map { TextWidth.of($0, monospaced: true, cached: false) }.max() ?? 0
         return (
             name: TextWidth.fit(vars.map(\.key) + ["Name"], monospaced: true, extra: 20, min: 80, max: 280),
+            // Project name + environment dot and name, or "Library".
+            origin: TextWidth.fit(vars.map { $0.inLibrary ? "Library" : "\($0.environment?.project?.name ?? "") development" } + ["From"],
+                                  extra: 44, min: 100, max: 260),
             // Dots (or a revealed value) + the edit icon.
             value: min(320, max(150, revealedWidest + 28)),
             category: TextWidth.fit(vars.map(\.displayCategory) + ["Service"], extra: 38, min: 90, max: 160),

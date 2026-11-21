@@ -23,6 +23,8 @@ struct ProjectBrowser: View {
     @State private var isCreatingAccount = false
     @State private var accountPendingDeletion: Account?
     @Query(filter: #Predicate<Variable> { $0.inLibrary }) private var libraryKeys: [Variable]
+    /// Every project variable: the Library shows them too (one row per environment).
+    @Query(filter: #Predicate<Variable> { !$0.inLibrary }) private var projectKeys: [Variable]
     /// Provider shown in the Library (nil = all).
     @State private var libraryProvider: String?
     @State private var libraryFocusRequest = 0
@@ -98,7 +100,7 @@ struct ProjectBrowser: View {
                             .frame(maxHeight: .infinity)
                         accountsFooter
                     case .libraries:
-                        LibraryProviderList(groups: library.all, total: libraryKeys.count,
+                        LibraryProviderList(groups: library.all, total: library.all.reduce(0) { $0 + $1.keys.count },
                                             selection: $libraryProvider)
                             .frame(maxHeight: .infinity)
                         libraryFooter
@@ -119,7 +121,7 @@ struct ProjectBrowser: View {
                         accountDetail
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     case .libraries:
-                        LibraryView(groups: library.shown, total: libraryKeys.count, focusRequest: libraryFocusRequest)
+                        LibraryView(groups: library.shown, total: library.all.reduce(0) { $0 + $1.keys.count }, focusRequest: libraryFocusRequest)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
@@ -350,9 +352,15 @@ struct ProjectBrowser: View {
 
     /// Groups for the right column: search filters keys (metadata only), and
     /// a provider picked on the left narrows to that group.
+    /// Library keys plus every project's keys.
+    private var libraryRows: [Variable] {
+        Library.everything(libraryKeys: libraryKeys, projectVariables: projectKeys)
+    }
+
     private func libraryGroups() -> (all: [LibraryGroup], shown: [LibraryGroup]) {
-        let all = LibraryGroup.make(from: libraryKeys)
-        let searched = isSearching ? LibraryGroup.make(from: Library.filter(libraryKeys, query: query)) : all
+        let keys = libraryRows
+        let all = LibraryGroup.make(from: keys)
+        let searched = isSearching ? LibraryGroup.make(from: Library.filter(keys, query: query)) : all
         guard let libraryProvider else { return (all, searched) }
         return (all, searched.filter { $0.id == libraryProvider })
     }

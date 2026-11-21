@@ -6,7 +6,8 @@ import LocalAuthentication
 import SwiftData
 import SwiftUI
 
-/// Library keys grouped by provider ("" = no provider, shown as "Other").
+/// Library keys and project keys grouped by provider ("" = no provider,
+/// shown as "Other").
 struct LibraryGroup: Identifiable {
     let provider: String
     let keys: [Variable]
@@ -17,8 +18,8 @@ struct LibraryGroup: Identifiable {
         let byProvider = Dictionary(grouping: keys) { $0.serviceLabel.lowercased() }
         return byProvider.values
             .map { keys in
-                LibraryGroup(provider: keys[0].serviceLabel,
-                             keys: keys.sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending })
+                LibraryGroup(provider: keys.first(where: \.inLibrary)?.serviceLabel ?? keys[0].serviceLabel,
+                             keys: keys.sorted(by: Library.displayOrder))
             }
             .sorted { a, b in
                 // "Other" last, the rest alphabetically.
@@ -43,7 +44,7 @@ struct LibraryProviderList: View {
     var body: some View {
         if total == 0 {
             ContentUnavailableView("No keys yet", systemImage: "books.vertical",
-                                   description: Text("Keep keys you reuse across projects here."))
+                                   description: Text("Keys you add here and the keys of every project show up here."))
         } else {
             let current = selection ?? Self.allTag
             List {
@@ -104,6 +105,15 @@ struct LibraryView: View {
     @FocusState private var addNameFocused: Bool
     @State private var dropTargeted = false
 
+    /// "12 keys across 4 providers · 9 from projects" (of the groups shown).
+    private var librarySummary: String {
+        let shown = groups.flatMap(\.keys)
+        let fromProjects = shown.filter { !$0.inLibrary }.count
+        var text = "\(total) \(total == 1 ? "key" : "keys") across \(groups.count) \(groups.count == 1 ? "provider" : "providers")"
+        if fromProjects > 0 { text += " · \(fromProjects) from projects" }
+        return text
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -113,7 +123,7 @@ struct LibraryView: View {
                             Text("Library").font(DS.Font.pageTitle)
                             Text(total == 0
                                  ? "Keys you reuse across projects — a personal OpenAI key, a Stripe test key. Not tied to any project."
-                                 : "\(total) \(total == 1 ? "key" : "keys") across \(groups.count) \(groups.count == 1 ? "provider" : "providers")")
+                                 : librarySummary)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
@@ -233,6 +243,8 @@ private struct LibrarySection: View {
     @State private var notice: String?
     @State private var hovering = false
     @State private var showsValues = false
+    /// The Edit switch: off = read-only (double-click a row copies it).
+    @State private var editUnlocked = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -245,6 +257,8 @@ private struct LibrarySection: View {
                         pendingDeletion: $pendingDeletion,
                         errorMessage: $errorMessage,
                         showsValues: $showsValues,
+                        isEditable: editUnlocked,
+                        showsOrigin: true,
                         emptyText: "No keys",
                         extraMenu: { v in AnyView(addToProjectMenu(v)) }
                     )
@@ -255,6 +269,9 @@ private struct LibrarySection: View {
             }
         }
         .panel(radius: DS.Radius.medium, bordered: true)
+        // Collapsing or the session locking puts the table back to read-only.
+        .onChange(of: isExpanded) { _, open in if !open { editUnlocked = false } }
+        .onChange(of: session.isUnlocked) { _, unlocked in if !unlocked { editUnlocked = false } }
     }
 
     private var header: some View {
@@ -273,6 +290,7 @@ private struct LibrarySection: View {
             Spacer()
             if isExpanded {
                 ShowValuesButton(isOn: $showsValues, isEnabled: group.keys.contains(where: \.hasValue))
+                EditSwitch(isOn: $editUnlocked)
             }
         }
         .padding(.horizontal, DS.Space.m)
@@ -294,12 +312,14 @@ private struct LibrarySection: View {
                 pendingDeletion = group.keys.filter { selection.contains($0.id) }
             } label: { Image(systemName: "minus").frame(width: 24, height: 20) }
                 .buttonStyle(.borderless)
-                .disabled(selection.isEmpty)
-                .help("Delete selected")
+                .disabled(selection.isEmpty || !editUnlocked)
+                .help(editUnlocked ? "Delete selected" : "Turn on Edit to delete keys")
                 .accessibilityLabel("Delete selected keys")
                 .clickableCursor()
             Spacer()
-            Text(errorMessage ?? notice ?? "Right-click a key to add it to a project")
+            Text(errorMessage ?? notice ?? (editUnlocked
+                ? "Right-click a key to add it to a project"
+                : "Double-click a key to copy it as a .env line · right-click to add it to a project · turn on Edit to change it"))
                 .font(.caption)
                 .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
                 .lineLimit(2)

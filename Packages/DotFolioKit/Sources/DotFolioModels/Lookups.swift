@@ -33,14 +33,44 @@ public enum Library {
         keys(context: context).filter { $0.serviceLabel.caseInsensitiveCompare(provider) == .orderedSame }
     }
 
-    /// Search over metadata only (never values): key, provider, service, account, notes.
+    /// Search over metadata only (never values): key, provider, service,
+    /// account, notes, and the project a project key belongs to.
     public static func filter(_ keys: [Variable], query: String) -> [Variable] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return keys }
         return keys.filter { v in
-            [v.key, v.serviceLabel, v.displayCategory, v.account?.login ?? "", v.notes]
+            [v.key, v.serviceLabel, v.displayCategory, v.account?.login ?? "", v.notes, v.environment?.project?.name ?? ""]
                 .contains { !$0.isEmpty && $0.localizedStandardContains(q) }
         }
+    }
+
+    // MARK: Library view (Library keys + every project's keys)
+
+    /// What the Library shows: its own keys plus every project variable, one
+    /// row per environment. Project keys are not copies — they are the
+    /// project's variables, so deleting a project removes them here too and
+    /// a Library key with the same name is never touched.
+    public static func everything(libraryKeys: [Variable], projectVariables: [Variable]) -> [Variable] {
+        (libraryKeys.filter(\.inLibrary) + projectVariables.filter { !$0.inLibrary && $0.environment?.project != nil })
+            .sorted(by: displayOrder)
+    }
+
+    /// Inside a provider: Library keys first, then project keys; each by
+    /// name, then project, then environment order (development → production).
+    public static func displayOrder(_ a: Variable, _ b: Variable) -> Bool {
+        if a.inLibrary != b.inLibrary { return a.inLibrary }
+        let byKey = a.key.localizedStandardCompare(b.key)
+        if byKey != .orderedSame { return byKey == .orderedAscending }
+        let pa = a.environment?.project?.name ?? "", pb = b.environment?.project?.name ?? ""
+        let byProject = pa.localizedStandardCompare(pb)
+        if byProject != .orderedSame { return byProject == .orderedAscending }
+        return (a.environment?.sortOrder ?? 0) < (b.environment?.sortOrder ?? 0)
+    }
+
+    /// "Library" or "Shop · production".
+    public static func origin(of v: Variable) -> String {
+        guard !v.inLibrary, let env = v.environment else { return "Library" }
+        return "\(env.project?.name ?? "Project") · \(env.name)"
     }
 }
 
