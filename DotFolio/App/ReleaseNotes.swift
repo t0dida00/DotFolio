@@ -7,6 +7,16 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.6.1", highlights: [
+            ("line.3.horizontal.decrease.circle", "Filter the Library",
+             "Under Libraries, pick All, Library, Dev, Staging or Prod to see every key, only the Library’s own, or the project keys of one environment."),
+            ("cursorarrow.rays", "Row hover",
+             "Variable tables highlight the row under the pointer."),
+            ("lock", "Used by opens read-only",
+             "An account’s Used by tables are locked until you turn on Edit, like projects and the Library; double-click a key to copy it as a .env line."),
+            ("chevron.down", "Fixes",
+             "A Library or Used by section can be collapsed even when it’s the only one, and the From column no longer cuts off “production”."),
+        ]),
         Entry(version: "0.6.0", highlights: [
             ("books.vertical", "Every key in the Library",
              "The Library now lists the keys of all your projects next to its own, one row per environment, with a From column. Import a project and its keys appear; delete it and they go. Keys you added to the Library yourself always stay."),
