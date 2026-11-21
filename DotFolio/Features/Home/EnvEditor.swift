@@ -12,6 +12,7 @@ struct EnvEditor: View {
     let environment: ProjectEnvironment
 
     @Environment(\.modelContext) private var context
+    @Environment(AppNavigation.self) private var navigation
     @Environment(\.secretStore) private var secrets
     @Environment(SessionLock.self) private var session
 
@@ -77,7 +78,7 @@ struct EnvEditor: View {
             copyMenu(variables: variables, others: others)
                 .padding(.leading, DS.Space.s)
             Spacer()
-            Text(errorMessage ?? copyNotice ?? (isEditing ? "Values live in your Keychain · showing and copying them ask for Touch ID" : "Double-click a row to copy its value · turn on Edit to change it"))
+            Text(errorMessage ?? copyNotice ?? (isEditing ? "Values live in your Keychain · showing and copying them ask for Touch ID" : "Double-click a row to copy it as a .env line · turn on Edit to change it"))
                 .font(.caption)
                 .foregroundStyle(errorMessage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DS.Status.danger))
                 .lineLimit(2)
@@ -135,6 +136,11 @@ struct EnvEditor: View {
                     notice += " Skipped \(result.skipped.count) already there: \(result.skipped.prefix(3).joined(separator: ", "))\(result.skipped.count > 3 ? "…" : "")."
                 }
                 copyNotice = notice
+                navigation.show(result.copied == 0
+                    ? .nothing("Nothing copied", "Every name is already in \(target.name); existing ones are never overwritten.",
+                               groups: [.init(title: "Already there", names: result.skipped)])
+                    : .success("Copied to \(target.name)", notice,
+                               groups: result.skipped.isEmpty ? [] : [.init(title: "Already there, skipped", names: result.skipped)]))
             } catch let error as LAError where error.code == .userCancel || error.code == .appCancel || error.code == .systemCancel {
                 // Prompt dismissed.
             } catch {

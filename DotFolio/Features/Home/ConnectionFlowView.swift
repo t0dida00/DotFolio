@@ -179,7 +179,7 @@ private struct GitLabHostStep: View {
             StepHeader(title: "Self-hosted GitLab", subtitle: "Enter the address of your company’s or client’s GitLab.")
 
             VStack(alignment: .leading, spacing: DS.Space.xs) {
-                Text("GitLab address").font(.callout.weight(.medium))
+                Text.fieldTitle("GitLab address", required: true).font(.callout.weight(.medium))
                 TextField("", text: $model.gitLabHost)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)

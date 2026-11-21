@@ -12,7 +12,8 @@ public enum AccountSignOut {
 
     /// Projects belonging to the account: tagged as imported from it, or
     /// (for projects imported before tagging existed) pointing at one of the
-    /// account's repos. Hand-made projects without such a link are never included.
+    /// account's repos. Hand-made projects without such a link, and projects
+    /// linked to a folder on this Mac, are never included by that fallback.
     @MainActor
     public static func projects(provider: RepoProvider, login: String, repoFullNames: Set<String>, context: ModelContext) -> [Project] {
         let tag = source(provider: provider, login: login)
@@ -21,7 +22,9 @@ public enum AccountSignOut {
         return all.filter { project in
             guard project.provider == provider else { return false }
             if project.importedFrom == tag { return true }
-            return project.importedFrom == nil && names.contains(project.repoFullName.lowercased())
+            // A project linked to a folder on this Mac is the user's own checkout.
+            return project.importedFrom == nil && project.localFolderBookmark == nil
+                && names.contains(project.repoFullName.lowercased())
         }
     }
 

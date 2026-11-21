@@ -126,6 +126,8 @@ final class ConnectionFlowModel {
     private(set) var isPreparingSignOut = false
     private var task: Task<Void, Never>?
     private static let tokenRef = "github"
+    /// Shows a result dialog (set by the root view).
+    var onReport: ((ResultReport) -> Void)?
 
     init(step: Step = .idle) {
         self.step = step
@@ -186,12 +188,14 @@ final class ConnectionFlowModel {
                     provider: .github, username: account.login, email: account.email, avatarURL: account.avatarUrl,
                     repoCount: repos.count, privateRepoCount: repos.filter(\.isPrivate).count
                 ))
+                onReport?(.success("Signed in to GitHub", "Connected as @\(account.login), with \(repos.count) \(repos.count == 1 ? "repository" : "repositories") you can import (read-only)."))
             }
         } catch is CancellationError {
             // Cancelled by the user.
         } catch {
             if Task.isCancelled { return }
             step = .failed(Self.failure(for: error))
+            onReport?(.failed("Couldn’t sign in to GitHub", ResultReport.describe(error)))
         }
     }
 
@@ -249,10 +253,16 @@ final class ConnectionFlowModel {
             // Keep the token too: the account's projects still exist, and the
             // user can retry signing out.
             step = .failed(.other("Some stored values couldn’t be removed from the Keychain, so sign-out stopped. \((error as? KeychainError)?.userMessage ?? error.localizedDescription)"))
+            onReport?(.failed("Couldn’t sign out of GitHub", "Some stored values couldn’t be removed from the Keychain, so sign-out stopped."))
             return
         }
         forgetGitHub()
         step = .idle
+        onReport?(.success("Signed out of GitHub",
+                           plan.projects.isEmpty
+                               ? "DOTFOLIO forgot @\(plan.login). No projects came from it."
+                               : "DOTFOLIO forgot @\(plan.login) and deleted the \(plan.projects.count) projects imported from it, with their Keychain values.",
+                           groups: plan.projects.isEmpty ? [] : [.init(title: "Deleted", names: plan.projects.map(\.name))]))
     }
 
     private func forgetGitHub() {
@@ -346,7 +356,10 @@ final class ConnectionFlowModel {
             selectedRepoIDs = []
             inFlight = []
             importStats.cancelled = Task.isCancelled
-            if !Task.isCancelled { step = .importFinished(importStats) }
+            if !Task.isCancelled {
+                step = .importFinished(importStats)
+                onReport?(Self.report(importStats))
+            }
         }
     }
 
@@ -358,6 +371,21 @@ final class ConnectionFlowModel {
         var summary = importStats
         summary.cancelled = true
         step = .importFinished(summary)
+        onReport?(Self.report(summary))
+    }
+
+    /// The dialog after importing repositories.
+    private static func report(_ s: ImportSummary) -> ResultReport {
+        let projects = "\(s.projects) \(s.projects == 1 ? "project" : "projects")"
+        if s.projects == 0 {
+            return .nothing(s.cancelled ? "Import stopped" : "Nothing imported", "No repository was imported.")
+        }
+        var message = "Imported \(projects) with \(s.variables) variables from GitHub."
+        if s.unreadable > 0 { message += " \(s.unreadable) .env.example \(s.unreadable == 1 ? "file" : "files") couldn’t be read." }
+        if s.cancelled { message += " You stopped the import; what finished is kept." }
+        return s.unreadable > 0
+            ? ResultReport(outcome: .nothingNew, title: "Imported with warnings", message: message)
+            : .success("Repositories imported", message)
     }
 
     // MARK: GitLab (not wired yet)

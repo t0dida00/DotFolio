@@ -181,6 +181,7 @@ struct AccountDetailView: View {
     let onDelete: () -> Void
 
     @Environment(\.modelContext) private var context
+    @Environment(AppNavigation.self) private var navigation
     @State private var draft: AccountDraft
     @State private var error: String?
     /// "Used by" sections that are open (project IDs, or `libraryID`).
@@ -281,7 +282,7 @@ struct AccountDetailView: View {
                         AccountKeysSection(
                             title: group.project.name,
                             count: group.count,
-                            icon: AnyView(ProjectTile(provider: group.project.provider, size: 28)),
+                            icon: AnyView(ProjectTile(project: group.project, size: 28)),
                             isExpanded: binding(for: Self.sectionID(group.project), single: sectionIDs.count == 1),
                             onOpen: { onOpenProject(group.project) }
                         ) {
@@ -328,8 +329,10 @@ struct AccountDetailView: View {
                                      displayName: draft.displayName, notes: draft.notes, context: context)
             draft = AccountDraft(account)
             error = nil
+            navigation.show(.success("Account saved", "\(account.login) was updated."))
         } catch {
             self.error = error.message
+            navigation.show(.failed("Couldn’t save the account", error.message))
         }
     }
 }
@@ -358,7 +361,7 @@ struct AccountFields: View {
     var body: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.m, verticalSpacing: DS.Space.s) {
             GridRow {
-                label("Login")
+                label("Login", required: true)
                 TextField("", text: $draft.login)
                     .fieldHint("The email or username you sign in with.")
             }
@@ -380,12 +383,10 @@ struct AccountFields: View {
         .textFieldStyle(.roundedBorder)
     }
 
-    private func label(_ text: String, optional: Bool = false) -> some View {
-        HStack(spacing: DS.Space.xs) {
-            Text(text).foregroundStyle(.secondary)
-            if optional { Text("(optional)").foregroundStyle(.tertiary) }
-        }
-        .gridColumnAlignment(.trailing)
+    private func label(_ text: String, required: Bool = false, optional: Bool = false) -> some View {
+        Text.fieldTitle(text, required: required, optional: optional)
+            .foregroundStyle(.secondary)
+            .gridColumnAlignment(.trailing)
     }
 }
 
@@ -495,6 +496,7 @@ private struct ServiceProjectsBlock: View {
     let account: Account
     let service: String
     @Environment(\.modelContext) private var context
+    @Environment(AppNavigation.self) private var navigation
 
     @State private var newName = ""
     @State private var newID = ""
@@ -529,7 +531,11 @@ private struct ServiceProjectsBlock: View {
                             .help(console.absoluteString)
                             .clickableCursor()
                     }
-                    Button { AccountEditor.delete(sp, context: context) } label: { Image(systemName: "trash") }
+                    Button {
+                        let name = sp.name
+                        AccountEditor.delete(sp, context: context)
+                        navigation.show(.success("Provider project removed", "\(name) was removed from this account."))
+                    } label: { Image(systemName: "trash") }
                         .buttonStyle(.borderless)
                         .help("Remove \(sp.name)")
                         .accessibilityLabel("Remove \(sp.name)")
@@ -540,9 +546,9 @@ private struct ServiceProjectsBlock: View {
             }
 
             HStack(alignment: .bottom, spacing: DS.Space.s) {
-                LabeledField("Project name") { TextField("", text: $newName) }
+                LabeledField("Project name", required: true) { TextField("", text: $newName) }
                 LabeledField("Project ID") { TextField("", text: $newID).font(.body.monospaced()) }
-                LabeledField("Console URL (optional)") { TextField("", text: $newURL) }
+                LabeledField("Console URL", optional: true) { TextField("", text: $newURL) }
                 Button("Add", action: add)
                     .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
                     .clickableCursor()
@@ -560,9 +566,11 @@ private struct ServiceProjectsBlock: View {
         do {
             try AccountEditor.addServiceProject(to: account, service: service, name: newName, externalID: newID,
                                                 consoleURL: newURL, context: context)
+            navigation.show(.success("Provider project added", "\(newName.trimmingCharacters(in: .whitespaces)) was added to \(service)."))
             newName = ""; newID = ""; newURL = ""; error = nil
         } catch {
             self.error = error.message
+            navigation.show(.failed("Couldn’t add the provider project", error.message))
         }
     }
 }
@@ -574,6 +582,7 @@ struct NewAccountForm: View {
     let onCancel: () -> Void
 
     @Environment(\.modelContext) private var context
+    @Environment(AppNavigation.self) private var navigation
     @State private var draft = AccountDraft()
     @State private var error: String?
 
@@ -614,8 +623,10 @@ struct NewAccountForm: View {
             let account = try AccountEditor.createAccount(services: draft.services, login: draft.login,
                                                           displayName: draft.displayName, notes: draft.notes, context: context)
             onCreated(account)
+            navigation.show(.success("Account created", "\(account.login) was added."))
         } catch {
             self.error = error.message
+            navigation.show(.failed("Couldn’t create the account", error.message))
         }
     }
 }

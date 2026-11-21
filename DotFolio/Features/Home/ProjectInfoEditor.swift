@@ -6,6 +6,7 @@ import SwiftUI
 struct ProjectInfoEditor: View {
     let project: Project
     let onDone: () -> Void
+    @Environment(AppNavigation.self) private var navigation
 
     @State private var name: String
     @State private var summary: String
@@ -38,13 +39,13 @@ struct ProjectInfoEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.m) {
             HStack(spacing: DS.Space.m) {
-                ProjectTile(provider: project.provider, size: 52)
+                ProjectTile(project: project, size: 52)
                 Text("Edit Project").font(DS.Font.pageTitle)
             }
 
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.s, verticalSpacing: DS.Space.s) {
                 GridRow {
-                    label("Project name")
+                    label("Project name", required: true)
                     TextField("", text: $name)
                         .focused($nameFocused)
                         .fieldHint("Shown in the project list and tabs, e.g. My App.")
@@ -109,12 +110,10 @@ struct ProjectInfoEditor: View {
         }
     }
 
-    private func label(_ text: String, optional: Bool = false) -> some View {
-        HStack(spacing: DS.Space.xs) {
-            Text(text).foregroundStyle(.secondary)
-            if optional { Text("(optional)").foregroundStyle(.tertiary) }
-        }
-        .gridColumnAlignment(.trailing)
+    private func label(_ text: String, required: Bool = false, optional: Bool = false) -> some View {
+        Text.fieldTitle(text, required: required, optional: optional)
+            .foregroundStyle(.secondary)
+            .gridColumnAlignment(.trailing)
     }
 
     private func refreshFolder() {
@@ -125,8 +124,10 @@ struct ProjectInfoEditor: View {
         do {
             try ProjectEditor.update(project, name: name, summary: summary, link: link)
             onDone()
+            navigation.show(.success("Project saved", "“\(project.name)” was updated."))
         } catch {
             self.error = error.message
+            navigation.show(.failed("Couldn’t save the project", error.message))
         }
     }
 }

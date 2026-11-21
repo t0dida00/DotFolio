@@ -43,6 +43,12 @@ struct DotFolioApp: App {
         .modelContainer(container)
         .environment(\.secretStore, KeychainStore.secrets(bundleID: Self.bundleID))
         .commands {
+            CommandGroup(after: .newItem) {
+                Button("Import Project Folder…") {
+                    if let folder = ProjectFolderPicker.choose() { navigation.folderToImport = PendingFolder(url: folder) }
+                }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+            }
             // After "About DotFolio": always present (the app has no Settings
             // scene yet, so an .appSettings anchor may not exist).
             CommandGroup(after: .appInfo) {

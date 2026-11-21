@@ -10,7 +10,6 @@ struct RootView: View {
     @Environment(AppNavigation.self) private var navigation
     @Environment(UpdateCenter.self) private var updates
     @State private var flow = ConnectionFlowModel()
-    @State private var eraseError: String?
     /// Suggest Sources opens by itself once, the first time this version runs.
     @AppStorage("didReviewSourceSuggestions") private var didReviewSources = false
 
@@ -23,10 +22,13 @@ struct RootView: View {
             flow.configure(context: context,
                            tokens: KeychainStore.oauthTokens(bundleID: DotFolioApp.bundleID),
                            secrets: KeychainStore.secrets(bundleID: DotFolioApp.bundleID))
+            flow.onReport = { navigation.show($0) }
             offerSourceSuggestionsOnce()
         }
         .sheet(isPresented: $navigation.isVerifyingData) { VerifyDataSheet() }
         .sheet(isPresented: $navigation.isSuggestingSources) { SuggestSourcesSheet() }
+        .sheet(item: $navigation.folderToImport) { FolderImportSheet(folder: $0.url) }
+        .sheet(item: $navigation.report) { ResultReportSheet(report: $0) }
         .sheet(isPresented: Binding(get: { updates.isShowingResult }, set: { updates.isShowingResult = $0 })) {
             UpdateResultSheet(center: updates)
         }
@@ -48,11 +50,6 @@ struct RootView: View {
             }
         } message: { plan in
             Text(signOutMessage(plan))
-        }
-        .alert("Couldn’t erase data", isPresented: Binding(get: { eraseError != nil }, set: { if !$0 { eraseError = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(eraseError ?? "")
         }
     }
 
@@ -93,11 +90,12 @@ struct RootView: View {
             for key in ["home.sort", "workspace.variableSort", RepoConnections.gitHubUserKey, RepoConnections.gitLabUserKey] {
                 UserDefaults.standard.removeObject(forKey: key)
             }
+            navigation.show(.success("All data erased", "Every project, account and variable was deleted, and their values and sign-in tokens were removed from your Keychain."))
         } catch DataEraser.Failure.keychain(let error) {
             let detail = (error as? KeychainError)?.userMessage ?? error.localizedDescription
-            eraseError = "Values in the Keychain couldn’t be removed, so nothing was deleted. \(detail)"
+            navigation.show(.failed("Couldn’t erase data", "Values in the Keychain couldn’t be removed, so nothing was deleted. \(detail)"))
         } catch {
-            eraseError = error.localizedDescription
+            navigation.show(.failed("Couldn’t erase data", error.localizedDescription))
         }
     }
 }

@@ -97,12 +97,11 @@ struct LibraryView: View {
     let focusRequest: Int
 
     @Environment(\.modelContext) private var context
+    @Environment(AppNavigation.self) private var navigation
     @Environment(\.secretStore) private var secrets
 
     @State private var expanded: Set<String> = []
     @FocusState private var addNameFocused: Bool
-    @State private var importMessage: String?
-    @State private var importFailed = false
     @State private var dropTargeted = false
 
     var body: some View {
@@ -130,12 +129,6 @@ struct LibraryView: View {
                         .help("Add the keys of .env files to the Library — or drop the files here")
                     }
 
-                    if let importMessage {
-                        Label(importMessage, systemImage: importFailed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                            .font(.callout)
-                            .foregroundStyle(importFailed ? DS.Status.danger : DS.Status.success)
-                    }
-
                     if groups.isEmpty && total > 0 {
                         ContentUnavailableView.search
                     }
@@ -161,13 +154,14 @@ struct LibraryView: View {
             }
             .scrollBounceBehavior(.basedOnSize)
 
-            AddVariableCard(target: .library, nameFocused: $addNameFocused)
+            AddVariableCard(target: .library, nameFocused: $addNameFocused, onDropFiles: { open($0) })
                 .padding(.horizontal, DS.Space.xl)
                 .padding(.vertical, DS.Space.m)
                 .background(.bar)
                 .overlay(alignment: .top) { Divider() }
         }
         .onChange(of: focusRequest) { _, _ in addNameFocused = true }
+
         .dropDestination(for: URL.self) { urls, _ in
             open(urls)
             return !urls.isEmpty
@@ -188,35 +182,21 @@ struct LibraryView: View {
     /// `#Service/Provider/Account/Link` comment says where it goes.
     private func open(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
+        let names = urls.map(\.lastPathComponent)
         do {
             let files = try EnvFilePicker.read(urls)
             let entries = Self.merged(files)
             guard !entries.isEmpty else {
-                importMessage = "No variables found in \(files.map(\.name).joined(separator: ", "))."
-                importFailed = true
+                navigation.show(.nothing("No variables found", "\(names.joined(separator: ", ")) has no KEY=value lines."))
                 return
             }
             let result = try LibraryImporter.importKeys(entries, context: context, secrets: secrets)
-            var message = "Imported \(result.added) \(result.added == 1 ? "key" : "keys")."
-            if !result.skipped.isEmpty {
-                message += " Skipped \(result.skipped.count) already there: \(Self.list(result.skipped))."
-            }
-            if !result.invalidLinks.isEmpty {
-                message += " Not a web link, left empty: \(Self.list(result.invalidLinks))."
-            }
-            importMessage = message
-            importFailed = false
+            navigation.show(.library(added: result.added, skipped: result.skipped, invalidLinks: result.invalidLinks, files: names))
         } catch let failure as VariableEditor.Failure {
-            importMessage = "Nothing was imported. \(failure.message)"
-            importFailed = true
+            navigation.show(.failure("Nothing was imported. \(failure.message)"))
         } catch {
-            importMessage = error.localizedDescription
-            importFailed = true
+            navigation.show(.failure(error.localizedDescription))
         }
-    }
-
-    private static func list(_ names: [String]) -> String {
-        names.prefix(3).joined(separator: ", ") + (names.count > 3 ? "…" : "")
     }
 
     /// One list from all files: a name appears once; real values win over
@@ -242,6 +222,7 @@ private struct LibrarySection: View {
     @Binding var isExpanded: Bool
 
     @Environment(\.modelContext) private var context
+    @Environment(AppNavigation.self) private var navigation
     @Environment(\.secretStore) private var secrets
     @Environment(SessionLock.self) private var session
     @Query(sort: \Project.name) private var projects: [Project]
@@ -358,6 +339,9 @@ private struct LibrarySection: View {
                 errorMessage = nil
                 let place = "\(env.project?.name ?? "") · \(env.name)"
                 notice = result.copied == 1 ? "Added \(key.key) to \(place)." : "\(key.key) already exists in \(place) — skipped."
+                navigation.show(result.copied == 1
+                    ? .success("Added to project", "\(key.key) was added to \(place)" + (includeValue ? " with its value." : ", name only."))
+                    : .nothing("Already there", "\(key.key) already exists in \(place). It was left as it was."))
             } catch let error as LAError where [.userCancel, .appCancel, .systemCancel].contains(error.code) {
                 // Prompt dismissed.
             } catch {

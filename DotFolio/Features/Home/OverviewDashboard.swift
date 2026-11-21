@@ -145,7 +145,7 @@ private struct HealthTile: View {
     var action: (title: String, run: () -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: DS.Space.m) {
+        HStack(alignment: .top, spacing: DS.Space.m) {
             TintedIcon(symbol: isWarning ? symbol : "checkmark.circle",
                        tint: isWarning ? DS.Status.warning : DS.Status.success, size: 34)
             VStack(alignment: .leading, spacing: DS.Space.xxs) {
@@ -169,7 +169,7 @@ private struct HealthTile: View {
             }
         }
         .padding(DS.Space.m)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .panel(radius: DS.Radius.medium)
         .accessibilityElement(children: action == nil ? .combine : .contain)
     }
@@ -364,7 +364,7 @@ private struct AttentionList: View {
             VStack(spacing: DS.Space.xs) {
                 ForEach(items) { item in
                     RowButton(action: { onOpen(item.project) }) {
-                        ProjectTile(provider: item.project.provider, size: 24)
+                        ProjectTile(project: item.project, size: 24)
                         Text(item.project.name).lineLimit(1)
                         Spacer()
                         Label("\(item.missing) of \(item.total) missing", systemImage: "exclamationmark.circle")

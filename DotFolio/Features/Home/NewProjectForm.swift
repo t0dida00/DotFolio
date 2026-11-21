@@ -9,6 +9,7 @@ import SwiftUI
 /// and link, and a .env table (#, Name, Value, Service, Provider, Account, Link).
 struct NewProjectForm: View {
     @Environment(\.modelContext) private var context
+    @Environment(AppNavigation.self) private var navigation
     /// Back to the project list (after Create or Cancel).
     let onClose: () -> Void
     @Environment(\.secretStore) private var secrets
@@ -80,7 +81,7 @@ struct NewProjectForm: View {
     private var fields: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: DS.Space.s, verticalSpacing: DS.Space.s) {
             GridRow {
-                fieldLabel("Project name")
+                fieldLabel("Project name", required: true)
                 TextField("", text: $draft.name)
                     .textFieldStyle(.roundedBorder)
                     .focused($nameFocused)
@@ -102,12 +103,9 @@ struct NewProjectForm: View {
         }
     }
 
-    private func fieldLabel(_ title: String, optional: Bool = false) -> some View {
-        HStack(spacing: DS.Space.xs) {
-            Text(title)
-            if optional { Text("(optional)").foregroundStyle(.tertiary) }
-        }
-        .gridColumnAlignment(.trailing)
+    private func fieldLabel(_ title: String, required: Bool = false, optional: Bool = false) -> some View {
+        Text.fieldTitle(title, required: required, optional: optional)
+            .gridColumnAlignment(.trailing)
     }
 
     private var linkHint: String {
@@ -146,7 +144,7 @@ struct NewProjectForm: View {
                 }
                 .width(20)
 
-                TableColumn("Name") { row in
+                TableColumn("Name *") { row in
                     TextField("", text: binding(row.id, \.key))
                         .textFieldStyle(.plain)
                         .font(.system(.body, design: .monospaced))
@@ -325,17 +323,28 @@ struct NewProjectForm: View {
             notice += " Kept \(kept.count) you already had: \(kept.prefix(3).joined(separator: ", "))\(kept.count > 3 ? "…" : "")."
         }
         importNotice = notice
+        let added = counts.values.reduce(0, +)
+        navigation.show(added == 0
+            ? .nothing("Nothing new to import", notice)
+            : .success("Imported .env successfully", notice, groups: kept.isEmpty ? [] : [.init(title: "Already in the table, kept as typed", names: kept)]))
     }
 
     private func save(includeValues: Bool) {
         guard draft.canCreate else { return }
         do {
-            try ProjectCreator.create(draft, includeValues: includeValues, context: context, secrets: secrets)
+            let project = try ProjectCreator.create(draft, includeValues: includeValues, context: context, secrets: secrets)
+            let count = Set(project.allVariables.map(\.key)).count
             onClose()
+            navigation.projectToOpen = project.id
+            navigation.show(.success("Project created",
+                                     "“\(project.name)” was created with \(count) \(count == 1 ? "variable" : "variables")"
+                                     + (includeValues ? "; values are in your Keychain." : ", names only.")))
         } catch ProjectCreator.Failure.keychain(let error) {
             keychainError = error
+            navigation.show(.failed("Couldn’t create the project", "Values couldn’t be saved to your Keychain, so nothing was created. \(error.userMessage)"))
         } catch {
             keychainError = .unexpectedStatus(-1)
+            navigation.show(.failed("Couldn’t create the project", ResultReport.describe(error)))
         }
     }
 

@@ -64,7 +64,7 @@ struct ProjectPreview: View {
 
     private var readOnlyHeader: some View {
         HStack(alignment: .top, spacing: DS.Space.m) {
-            ProjectTile(provider: project.provider, size: 52)
+            ProjectTile(project: project, size: 52)
             VStack(alignment: .leading, spacing: DS.Space.xs) {
                 Text(project.name)
                     .font(DS.Font.pageTitle)

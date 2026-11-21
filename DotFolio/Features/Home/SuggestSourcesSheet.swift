@@ -11,6 +11,7 @@ struct SuggestSourcesSheet: View {
     var variables: [Variable]? = nil
 
     @Environment(\.modelContext) private var context
+    @Environment(AppNavigation.self) private var navigation
     @Environment(\.dismiss) private var dismiss
 
     @State private var items: [SourceSuggester.Item] = []
@@ -112,8 +113,12 @@ struct SuggestSourcesSheet: View {
     }
 
     private func apply() {
-        SourceSuggester.apply(items.filter { picked.contains($0.id) }, context: context)
+        let chosen = items.filter { picked.contains($0.id) }
+        SourceSuggester.apply(chosen, context: context)
         try? context.save()
         dismiss()
+        navigation.show(.success("Sources filled",
+                                 "Service and Provider were filled for \(chosen.count) \(chosen.count == 1 ? "variable" : "variables").",
+                                 groups: [.init(title: "Filled", names: chosen.map(\.key))]))
     }
 }

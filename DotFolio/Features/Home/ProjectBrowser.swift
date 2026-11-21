@@ -12,6 +12,7 @@ struct ProjectBrowser: View {
     @Environment(\.modelContext) private var context
     @Environment(\.secretStore) private var secrets
     @Environment(UpdateCenter.self) private var updates
+    @Environment(AppNavigation.self) private var navigation
     @Query private var projects: [Project]
     @Query private var accounts: [Account]
 
@@ -29,6 +30,8 @@ struct ProjectBrowser: View {
     let flow: ConnectionFlowModel
     @Binding var showNewProject: Bool
     @AppStorage("home.sort") private var sort: ProjectSort = .name
+    /// All · Git · Local under the Projects tab (remembered; not a secret).
+    @AppStorage("home.originFilter") private var originFilter: ProjectOriginFilter = .all
     @AppStorage(RepoConnections.gitHubUserKey) private var gitHubUser = ""
     @AppStorage(RepoConnections.gitLabUserKey) private var gitLabUser = ""
     @State private var query = ""
@@ -43,7 +46,6 @@ struct ProjectBrowser: View {
     @State private var listAnchor: PersistentIdentifier?
     @FocusState private var listFocused: Bool
     @State private var projectsPendingDeletion: [Project] = []
-    @State private var deleteError: String?
     @FocusState private var searchFocused: Bool
 
     private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -73,9 +75,23 @@ struct ProjectBrowser: View {
 
                     switch mode {
                     case .projects:
-                        projectList
-                            .frame(maxHeight: .infinity)
-                        listFooter
+                        // Drop a project folder here to import its .env files.
+                        VStack(spacing: 0) {
+                            Picker("Source", selection: $originFilter) {
+                                ForEach(ProjectOriginFilter.allCases) { Text($0.title).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .controlSize(.small)
+                            .padding(.horizontal, DS.Space.m)
+                            .padding(.bottom, DS.Space.xs)
+                            .help("Show every project, those from GitHub/GitLab, or those linked to a folder on this Mac")
+                            .clickableCursor()
+                            projectList
+                                .frame(maxHeight: .infinity)
+                            listFooter
+                        }
+                        .projectFolderDropTarget(navigation)
                     case .accounts:
                         AccountList(accounts: accounts, query: query, selection: $accountSelection,
                                     onDelete: { accountPendingDeletion = $0 })
@@ -111,6 +127,15 @@ struct ProjectBrowser: View {
         }
         // No auto-open: with no tab open the Overview dashboard is the home view.
         .onChange(of: projects.count) { _, _ in pruneTabs() }
+        // A project just imported from a folder: show it.
+        .onChange(of: navigation.projectToOpen, initial: true) { _, id in
+            guard let id, let project = projects.first(where: { $0.id == id }) else { return }
+            mode = .projects
+            query = ""
+            if !originFilter.matches(project) { originFilter = .all }
+            selection = project.persistentModelID
+            navigation.projectToOpen = nil
+        }
         .onChange(of: selection) { _, id in
             if let id, !openTabs.contains(id) { openTabs.append(id) }
             selectedProject?.lastOpenedAt = .now
@@ -140,7 +165,9 @@ struct ProjectBrowser: View {
             Button("Delete Account", role: .destructive) {
                 if let account = accountPendingDeletion {
                     if accountSelection == account.persistentModelID { accountSelection = nil }
+                    let login = account.login
                     AccountEditor.delete(account, context: context)
+                    navigation.show(.success("Account deleted", "\(login) was removed. Variables that used it keep their values."))
                 }
                 accountPendingDeletion = nil
             }
@@ -149,11 +176,6 @@ struct ProjectBrowser: View {
             Text(used == 0
                  ? "Its provider projects (e.g. Firebase projects) are deleted too. This can’t be undone."
                  : "\(used) \(used == 1 ? "variable keeps" : "variables keep") existing but lose this source link. Its provider projects (e.g. Firebase projects) are deleted too. This can’t be undone.")
-        }
-        .alert("Couldn’t delete all projects", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(deleteError ?? "")
         }
     }
 
@@ -401,7 +423,7 @@ struct ProjectBrowser: View {
     // MARK: Left column (25%)
 
     private var results: [(project: Project, match: ProjectSearch.Match)] {
-        let sorted = ProjectSearch.sorted(projects, by: sort)
+        let sorted = ProjectSearch.sorted(projects.filter(originFilter.matches), by: sort)
         return isSearching ? ProjectSearch.filter(sorted, query: query) : sorted.map { ($0, .name) }
     }
 
@@ -419,8 +441,16 @@ struct ProjectBrowser: View {
             ContentUnavailableView(
                 "No projects",
                 systemImage: "folder",
-                description: Text(isSignedIn ? "Import a repo from GitHub or create one with New Project."
-                                             : "Create one with New Project.")
+                description: Text(isSignedIn ? "Import a repo from GitHub, drop a project folder here, or create one with New Project."
+                                             : "Drop a project folder here, or create one with New Project.")
+            )
+        } else if rows.isEmpty {
+            ContentUnavailableView(
+                originFilter == .local ? "No local projects" : "No Git projects",
+                systemImage: originFilter == .local ? "laptopcomputer" : "arrow.triangle.branch",
+                description: Text(originFilter == .local
+                                  ? "Drop a project folder here to import its .env files."
+                                  : (isSignedIn ? "Import a repo from GitHub with the menu below." : "Sign in to GitHub to import your repos."))
             )
         } else {
             let order = rows.map(\.project.persistentModelID)
@@ -606,11 +636,13 @@ struct ProjectBrowser: View {
     /// that fails is kept (with its Keychain items) and the rest still go.
     private func delete(_ picked: [Project]) {
         var failures: [String] = []
+        var deleted: [String] = []
         for project in picked {
             let id = project.persistentModelID
             let name = project.name
             do {
                 try ProjectDeleter.delete(project, context: context, secrets: secrets)
+                deleted.append(name)
                 closeTab(id)
                 listSelection.remove(id)
             } catch ProjectDeleter.Failure.keychain(let error) {
@@ -620,7 +652,15 @@ struct ProjectBrowser: View {
                 failures.append("“\(name)”: \(error.localizedDescription)")
             }
         }
-        if !failures.isEmpty { deleteError = failures.joined(separator: "\n") }
+        if failures.isEmpty {
+            navigation.show(.success(deleted.count == 1 ? "Project deleted" : "\(deleted.count) projects deleted",
+                                     "Their variables and the values in your Keychain were removed.",
+                                     groups: [.init(title: "Deleted", names: deleted)]))
+        } else {
+            navigation.show(.failed(deleted.isEmpty ? "Couldn’t delete the project" : "Some projects couldn’t be deleted",
+                                    failures.joined(separator: "\n")
+                                    + (deleted.isEmpty ? "" : "\nDeleted: \(deleted.joined(separator: ", ")).")))
+        }
     }
 }
 
@@ -683,7 +723,7 @@ private struct ProjectListRow: View {
 
     var body: some View {
         HStack(spacing: DS.Space.s) {
-            ProjectTile(provider: project.provider, size: 34)
+            ProjectTile(project: project, size: 34)
             VStack(alignment: .leading, spacing: DS.Space.xxs) {
                 Text(project.name).lineLimit(1)
                 Text(subtitle)
@@ -708,36 +748,71 @@ private struct ProjectListRow: View {
         .clickableCursor()
     }
 
+    /// `~/Projects/app`. The sandbox's home is the app container, so the
+    /// user's real home folder comes from the account record instead.
+    private static func tildePath(_ folder: URL) -> String {
+        let path = folder.path(percentEncoded: false)
+        guard let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir else { return path }
+        let home = String(cString: dir)
+        return path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
+    }
+
     /// While searching, say why a project matched; otherwise its repo.
     private var subtitle: String {
         switch match {
         case .variableKey(let key): "Matches \(key)"
         case .account(let login): "Uses \(login)"
         case .service(let name): "Uses \(name)"
-        case .name, .repo: project.repoFullName.isEmpty ? "No repo" : project.repoFullName
+        case .name, .repo:
+            if project.origin == .local, let folder = ProjectFolder.resolve(project) {
+                Self.tildePath(folder)
+            } else {
+                project.repoFullName.isEmpty ? "No repo" : project.repoFullName
+            }
         }
     }
 }
 
+/// A project's tile shows where it comes from: a folder on this Mac, GitHub,
+/// GitLab, or made by hand. Local stands out, since only local projects can
+/// read (and later sync) the .env files of their source code.
 struct ProjectTile: View {
-    let provider: RepoProvider
+    let origin: ProjectOrigin
     var size: CGFloat = 40
+
+    init(project: Project, size: CGFloat = 40) {
+        self.origin = project.origin
+        self.size = size
+    }
 
     var body: some View {
         TintedIcon(tint: tint, size: size) {
-            switch provider {
+            switch origin {
             case .github: BrandMark.github.image.resizable().scaledToFit().frame(width: size * 0.5, height: size * 0.5)
             case .gitlab: BrandMark.gitlab.image.resizable().scaledToFit().frame(width: size * 0.5, height: size * 0.5)
-            case .none: Image(systemName: "folder").font(.system(size: size * 0.42, weight: .medium))
+            case .local: Image(systemName: "laptopcomputer").font(.system(size: size * 0.4, weight: .medium))
+            case .manual: Image(systemName: "square.and.pencil").font(.system(size: size * 0.4, weight: .medium))
             }
+        }
+        .help(helpText)
+        .accessibilityLabel(helpText)
+    }
+
+    private var helpText: String {
+        switch origin {
+        case .local: "Local project: linked to a folder on this Mac"
+        case .github: "Imported from GitHub"
+        case .gitlab: "Imported from GitLab"
+        case .manual: "Created by hand"
         }
     }
 
     private var tint: Color {
-        switch provider {
+        switch origin {
+        case .local: DS.Palette.aqua
         case .github: DS.Palette.violet
         case .gitlab: DS.Palette.orange
-        case .none: DS.Palette.blue
+        case .manual: DS.Palette.blue
         }
     }
 }

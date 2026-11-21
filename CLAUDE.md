@@ -35,10 +35,11 @@ Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project sec
 - Window layout is not responsive: minimum window `HomeView.minSize` (1200×760), list column fixed at `ProjectBrowser.sidebarWidth` (320). Never size columns as a fraction of the window.
 - Page sections: `Card`. Light inset blocks: `.panel()`. Chips: `.chip()`.
 - Tables: native `Table` with `.bordered(alternatesRowBackgrounds: true)`, height `DS.Table.height(rows:)` (no vertical scroll, sideways only), content-fit widths via `TextWidth.fit`.
-- Inputs: no placeholder text anywhere (forms, table cells, add cards). Explain a form field with a caption line under it, `.fieldHint("…")` (red with `isError: true`); "(optional)" goes in the label. Search/filter fields are the only exception.
+- Inputs: no placeholder text anywhere (forms, table cells, add cards). Explain a form field with a caption line under it, `.fieldHint("…")` (red with `isError: true`). Field titles use `Text.fieldTitle(_:required:optional:)` (or `LabeledField(_:required:optional:)`): a required field ends with a red `*`, an optional one with "(optional)". Mark every field whose emptiness blocks saving as required. Search/filter fields are the only exception.
 - Links in tables/grids: `LinkText` (one line, left-aligned), never a bare `Link` with long text.
 - Every clickable control gets `.clickableCursor()` (on the control or its container). Action buttons use `.buttonBorderShape(.capsule)`.
 - Terms: **Service** = what it's for (Database, Cache…), **Provider** = who provides it (Supabase, Redis…), **Account** = a login (several providers), **Link** = console URL, **Library key** = a `Variable` with `inLibrary == true` and no environment (reusable, not in any project; names unique per provider).
+- Results: every button-triggered action (add, save, delete, import, copy to, sign in/out, erase) ends with a result dialog via `navigation.show(ResultReport…)` — green success, amber nothing changed, red failure (`DS.Status`, always with icon + title). Inline cell edits that save on Return/blur don't open one.
 - Destructive actions: `confirmationDialog` titled "Delete X?", message ends with "This can’t be undone."; Keychain items removed before metadata.
 - Unfinished features are hidden behind `FeatureFlags`, not shown as "coming soon".
 - Data integrity: `IntegrityCheck` (menu **DotFolio → Verify Data…**) must stay clean after any change that writes variables or Keychain items; add a case to its tests when introducing a new invariant.

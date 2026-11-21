@@ -5,6 +5,7 @@ import SwiftUI
 struct WelcomeView: View {
     let flow: ConnectionFlowModel
     @Binding var showNewProject: Bool
+    @Environment(AppNavigation.self) private var navigation
 
     var body: some View {
         ScrollView {
@@ -43,6 +44,10 @@ struct WelcomeView: View {
                 HStack(spacing: DS.Space.s) {
                     Button("Add project manually") { showNewProject = true }
                         .keyboardShortcut("n")
+                    Text("·").foregroundStyle(.tertiary).accessibilityHidden(true)
+                    Button("Import a project folder…") {
+                        if let folder = ProjectFolderPicker.choose() { navigation.folderToImport = PendingFolder(url: folder) }
+                    }
                     if FeatureFlags.gitLab {
                         Text("·").foregroundStyle(.tertiary).accessibilityHidden(true)
                         Button("Use self-hosted GitLab", action: flow.showGitLabHost)
@@ -67,6 +72,8 @@ struct WelcomeView: View {
         .scrollBounceBehavior(.basedOnSize)
         // Vertically centered when the window is taller than the content.
         .defaultScrollAnchor(.center)
+        // Dropping a project folder anywhere on the welcome screen imports it.
+        .projectFolderDropTarget(navigation)
     }
 }
 

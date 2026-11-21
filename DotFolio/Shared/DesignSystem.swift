@@ -260,3 +260,20 @@ struct LinkText: View {
             .accessibilityAction { NSWorkspace.shared.open(url) }
     }
 }
+
+
+// MARK: - Field titles
+
+extension Text {
+    /// A form field's title. Required fields end with a red asterisk, optional
+    /// ones with "(optional)"; everything else is plain.
+    static func fieldTitle(_ title: String, required: Bool = false, optional: Bool = false) -> Text {
+        if required {
+            return Text(title) + Text(" *").foregroundStyle(DS.Status.danger)
+        }
+        if optional {
+            return Text(title) + Text(" (optional)").foregroundStyle(.tertiary)
+        }
+        return Text(title)
+    }
+}

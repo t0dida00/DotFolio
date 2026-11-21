@@ -34,6 +34,7 @@ struct EnvFileView: View {
     @Environment(SessionLock.self) private var session
 
     @Environment(\.modelContext) private var context
+    @Environment(AppNavigation.self) private var navigation
 
     @State private var revealed: [Variable.ID: String] = [:]
     @State private var isRevealing = false
@@ -199,6 +200,7 @@ struct EnvFileView: View {
         let plan = EnvFileEdit.plan(draft, for: environment, currentValues: editValues)
         if plan.isEmpty {
             endEditing()
+            navigation.show(.nothing("No changes", "The file is the same as before, so nothing was saved."))
         } else if !plan.removed.isEmpty {
             pendingPlan = plan
         } else {
@@ -213,9 +215,16 @@ struct EnvFileView: View {
             try? context.save()
             errorMessage = nil
             endEditing()
+            var groups: [ResultReport.Group] = []
+            if !plan.added.isEmpty { groups.append(.init(title: "Added", names: plan.added.map(\.key))) }
+            let changed = Set(plan.values.keys).union(plan.sources.keys).subtracting(plan.added.map(\.key)).sorted()
+            if !changed.isEmpty { groups.append(.init(title: "Changed", names: changed)) }
+            if !plan.removed.isEmpty { groups.append(.init(title: "Deleted", names: plan.removed)) }
+            navigation.show(.success("Saved \(environment.name)", "Your edits to the file were saved; values are in your Keychain.", groups: groups))
         } catch {
             // Stay in the editor so the text can be fixed.
             errorMessage = error.message
+            navigation.show(.failed("Couldn’t save the file", "Nothing was changed. \(error.message)"))
         }
     }
 
@@ -255,6 +264,9 @@ struct EnvFileView: View {
 /// replacement, which would silently change values.
 struct EnvTextEditor: NSViewRepresentable {
     @Binding var text: String
+    /// Wrap long lines and scroll vertically (one value), instead of one
+    /// line per variable that scrolls sideways (the whole file).
+    var wraps = false
 
     static let font = NSFont.monospacedSystemFont(ofSize: NSFont.preferredFont(forTextStyle: .callout).pointSize, weight: .regular)
 
@@ -267,8 +279,8 @@ struct EnvTextEditor: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSTextView.scrollableTextView()
         scroll.drawsBackground = false
-        scroll.hasVerticalScroller = false
-        scroll.hasHorizontalScroller = true
+        scroll.hasVerticalScroller = wraps
+        scroll.hasHorizontalScroller = !wraps
         scroll.autohidesScrollers = true
         guard let view = scroll.documentView as? NSTextView else { return scroll }
         view.delegate = context.coordinator
@@ -285,11 +297,13 @@ struct EnvTextEditor: NSViewRepresentable {
         view.isAutomaticLinkDetectionEnabled = false
         view.isAutomaticDataDetectionEnabled = false
         view.textContainerInset = NSSize(width: DS.Space.s, height: DS.Space.s)
-        // No wrapping: the container is as wide as the longest line.
-        view.isHorizontallyResizable = true
-        view.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        view.textContainer?.widthTracksTextView = false
-        view.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        if !wraps {
+            // No wrapping: the container is as wide as the longest line.
+            view.isHorizontallyResizable = true
+            view.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+            view.textContainer?.widthTracksTextView = false
+            view.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        }
         view.string = text
         DispatchQueue.main.async { view.window?.makeFirstResponder(view) }
         return scroll

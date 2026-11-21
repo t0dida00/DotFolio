@@ -94,7 +94,31 @@ public struct SourceUsage: Identifiable {
     }
 }
 
+/// Where a project comes from, shown as its tile. Only `.local` projects have
+/// a folder on this Mac whose .env files DOTFOLIO can read (and later sync).
+public enum ProjectOrigin: Sendable {
+    /// Linked to a folder on this Mac (dropped, or chosen as Local folder).
+    case local
+    case github
+    case gitlab
+    /// Made by hand, no repo and no folder.
+    case manual
+}
+
 extension Project {
+    /// `importedFrom` of projects created from a dropped folder. Sign-out of a
+    /// repo host never removes them, even when their repo is on that host.
+    public static let folderImportTag = "folder"
+
+    public var origin: ProjectOrigin {
+        if localFolderBookmark != nil { return .local }
+        switch provider {
+        case .github: return .github
+        case .gitlab: return .gitlab
+        case .none: return .manual
+        }
+    }
+
     public var allVariables: [Variable] {
         (environments ?? []).flatMap { $0.variables ?? [] }
     }
@@ -191,5 +215,32 @@ public struct AccountKeys {
                     byEnvironment[env.persistentModelID].map { EnvironmentKeys(environment: env, keys: $0) }
                 })
             }
+    }
+}
+
+/// The All · Git · Local switch under Projects.
+public enum ProjectOriginFilter: String, CaseIterable, Identifiable, Sendable {
+    case all
+    /// Imported from GitHub or GitLab (no folder on this Mac).
+    case git
+    /// Linked to a folder on this Mac.
+    case local
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .all: "All"
+        case .git: "Git"
+        case .local: "Local"
+        }
+    }
+
+    public func matches(_ project: Project) -> Bool {
+        switch self {
+        case .all: true
+        case .git: project.origin == .github || project.origin == .gitlab
+        case .local: project.origin == .local
+        }
     }
 }
