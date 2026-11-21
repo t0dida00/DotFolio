@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.7.2", highlights: [
+            ("doc.text", "New README",
+             "The GitHub page now explains what DOTFOLIO is, why it exists, how to install and build it, and how it keeps your secrets. No changes to the app."),
+        ]),
         Entry(version: "0.7.1", highlights: [
             ("chevron.left.forwardslash.chevron.right", "Open source",
              "DOTFOLIO is now open source under the MIT License, with a full README on GitHub covering features, the security model, building from source and contributing."),
