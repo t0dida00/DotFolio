@@ -9,6 +9,7 @@ struct ProjectPreview: View {
     let onDelete: () -> Void
 
     @State private var environmentID: ProjectEnvironment.ID?
+    @Environment(AppNavigation.self) private var navigation
     @FocusState private var addNameFocused: Bool
     @State private var isEditing = false
     /// Table or File, remembered across projects and launches (not a secret).
@@ -157,6 +158,8 @@ struct ProjectPreview: View {
 
     private func envSection(environments: [ProjectEnvironment], environment: ProjectEnvironment?) -> some View {
         VStack(alignment: .leading, spacing: DS.Space.s) {
+            // Export and the environment picker act on one environment; Compare shows them all.
+            if viewMode != .compare {
             HStack {
                 if let environment {
                     ExportMenu(project: project, environment: environment)
@@ -168,8 +171,9 @@ struct ProjectPreview: View {
                     selection: Binding(get: { environment?.id }, set: { environmentID = $0 })
                 )
             }
+            }
 
-            if let environment, environment.isProtected {
+            if viewMode != .compare, let environment, environment.isProtected {
                 ProtectedEnvironmentBanner(name: environment.name)
             }
 
@@ -178,13 +182,15 @@ struct ProjectPreview: View {
                     Picker("View", selection: $viewMode) {
                         Text("Table").tag(EnvViewMode.table)
                         Text("File").tag(EnvViewMode.file)
+                        Text("Compare").tag(EnvViewMode.compare)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .fixedSize()
-                    .help("See the variables as a table or as a .env file")
+                    .help("See the variables as a table, as a .env file, or every environment side by side")
                     .clickableCursor()
                     Spacer()
+                    if viewMode != .compare {
                     if editUnlocked {
                         Button {
                             isSuggesting = true
@@ -198,18 +204,33 @@ struct ProjectPreview: View {
                     ShowValuesButton(isOn: $showsValues,
                                      isEnabled: (environment.variables ?? []).contains(where: \.hasValue))
                     EditSwitch(isOn: $editUnlocked)
+                    }
                 }
                 .padding(.top, DS.Space.xs)
 
-                EnvEditor(environment: environment, mode: viewMode, showsValues: $showsValues,
-                          isEditing: $editUnlocked, onAdd: { addNameFocused = true })
-                    .id(environment.id) // fresh state (revealed values, drafts) per environment
+                if viewMode == .compare {
+                    EnvCompareView(project: project) { env in
+                        environmentID = env.id
+                        viewMode = .table
+                    }
+                } else {
+                    EnvEditor(environment: environment, mode: viewMode, showsValues: $showsValues,
+                              isEditing: $editUnlocked, onAdd: { addNameFocused = true })
+                        .id(environment.id) // fresh state (revealed values, drafts) per environment
+                }
             }
         }
         // Another environment, project or view starts hidden and locked again.
         .onChange(of: environment?.id) { showsValues = false; editUnlocked = false }
         .onChange(of: project.id) { showsValues = false; editUnlocked = false }
         .onChange(of: viewMode) { editUnlocked = false }
+        // A key picked in the ⌘K palette or the menu bar: show its environment.
+        .onChange(of: navigation.environmentToOpen, initial: true) { _, id in
+            guard let id, environments.contains(where: { $0.id == id }) else { return }
+            environmentID = id
+            if viewMode == .compare { viewMode = .table }
+            navigation.environmentToOpen = nil
+        }
         .sheet(isPresented: $isSuggesting) {
             SuggestSourcesSheet(variables: environment?.sortedVariables ?? [])
         }

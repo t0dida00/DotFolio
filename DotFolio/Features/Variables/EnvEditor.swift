@@ -48,7 +48,7 @@ struct EnvEditor: View {
                     isEditable: isEditing,
                     emptyText: "No variables in \(environment.name) yet — add one below."
                 )
-            case .file:
+            case .file, .compare:
                 EnvFileView(environment: environment, variables: variables, errorMessage: $errorMessage, showsValues: $showsValues, isEditing: $isEditing)
             }
             footer(variables: variables, others: others)

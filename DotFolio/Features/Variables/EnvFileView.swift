@@ -9,7 +9,9 @@ import SwiftUI
 /// How a project's variables are shown: the editable table, or the .env
 /// file a developer would write.
 enum EnvViewMode: String {
-    case table, file
+    /// `compare` shows every environment side by side (EnvCompareView); the
+    /// project page draws it instead of EnvEditor.
+    case table, file, compare
 }
 
 /// One environment as a .env file: line numbers and one line per variable,
