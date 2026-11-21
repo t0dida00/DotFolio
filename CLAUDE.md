@@ -44,6 +44,25 @@ Native macOS app (Swift 6, SwiftUI, SwiftData, macOS 26) that stores project sec
 - Unfinished features are hidden behind `FeatureFlags`, not shown as "coming soon".
 - Data integrity: `IntegrityCheck` (menu **DotFolio → Verify Data…**) must stay clean after any change that writes variables or Keychain items; add a case to its tests when introducing a new invariant.
 
+## Pull requests and commits: `type(scope): summary`
+
+Every PR title (and the squash-merge commit it becomes) follows Conventional Commits, like:
+
+```
+feat(library): filter keys by environment
+fix(tab-strip): keep the active tab when closing tabs to the right
+refactor(projects): split ProjectBrowser into column views
+```
+
+- **Format:** `type(scope): summary`. Lower case, imperative mood ("add", "keep", "split"), no trailing period, at most ~72 characters. Say what changes for the user or the code, not how ("show provider icons by service", not "update AccountViews.swift").
+- **Types:** `feat` (new behavior), `fix` (bug fix), `refactor` (no behavior change), `perf`, `docs` (README, CLAUDE.md, comments), `test`, `build` (project.yml, XcodeGen, signing), `ci`, `chore` (tooling, housekeeping), `revert`.
+- **Scopes** (one, the area that changes): `projects`, `variables`, `library`, `accounts`, `overview`, `import`, `github`, `sources` (Smart sources, `SourceGuesser`), `keychain` (DotFolioSecurity, Touch ID session), `env` (DotFolioEnv), `models`, `core`, `design-system`, `tab-strip`, `updates`, `icon`, `readme`. Use a component name in kebab-case when it's narrower (`value-editor`, `folder-import`). Drop the scope only for changes that span the whole app.
+- **Breaking changes** (data model or behavior users rely on): add `!`, as in `feat(models)!: one variable for every environment`, and explain the migration in the PR body. It ships as a MAJOR release.
+- **Body:** what changed and why, how it was checked (tests, build, screens looked at), and anything not verified. End with the attribution lines the session asks for.
+- **Branches:** `type/short-topic`, as in `feat/encrypted-backup`, `fix/library-empty-state`, `refactor/version-2`.
+- **Labels:** a fix that must also reach an older release line gets `backport release/X.Y`.
+- **Exception:** release commits keep the exact form `Release vX.Y.Z` (see below).
+
 ## Releases: every update to `main` ships a release
 
 Whenever new work lands on `main` (a merge or a push), publish a new version in the same session — the app's **Check for Updates…** reads GitHub Releases, so an unreleased `main` is invisible to users.
