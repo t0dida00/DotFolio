@@ -30,6 +30,7 @@ struct RootView: View {
         .sheet(isPresented: $navigation.isSuggestingSources) { SuggestSourcesSheet() }
         .sheet(item: $navigation.folderToImport) { FolderImportSheet(folder: $0.url) }
         .sheet(item: $navigation.report) { ResultReportSheet(report: $0) }
+        .sheet(isPresented: $navigation.isShowingPalette) { CommandPaletteView() }
         .sheet(isPresented: Binding(get: { updates.isShowingResult }, set: { updates.isShowingResult = $0 })) {
             UpdateResultSheet(center: updates)
         }

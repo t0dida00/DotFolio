@@ -16,6 +16,7 @@ struct HomeView: View {
     @AppStorage(RepoConnections.gitHubUserKey) private var gitHubUser = ""
     @AppStorage(RepoConnections.gitLabUserKey) private var gitLabUser = ""
     @State private var showNewProject = false
+    @Environment(AppNavigation.self) private var navigation
 
     /// The layout is not responsive: below this size it would squeeze tiles,
     /// tabs and tables, so the window can't get smaller (it can grow).
@@ -74,6 +75,12 @@ struct HomeView: View {
         .animation(.smooth(duration: 0.2), value: stage)
         // Starting a sign-in replaces the form; don't bring it back afterwards.
         .onChange(of: model.step) { _, step in if step != .idle { showNewProject = false } }
+        // "New Project" picked in the ⌘K palette.
+        .onChange(of: navigation.isRequestingNewProject) { _, asked in
+            guard asked else { return }
+            showNewProject = true
+            navigation.isRequestingNewProject = false
+        }
     }
 }
 

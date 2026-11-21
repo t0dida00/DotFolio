@@ -10,6 +10,8 @@ struct DotFolioApp: App {
     @State private var session = SessionLock()
     @State private var updates = UpdateCenter()
     @State private var autoLock: SessionAutoLock?
+    /// "Show in Menu Bar" (DOTFOLIO menu); not a secret.
+    @AppStorage("menuBarExtra") private var showsMenuBarExtra = true
 
     init() {
         do {
@@ -22,20 +24,13 @@ struct DotFolioApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        // "main": the menu bar panel's Open DOTFOLIO reopens it by this id.
+        WindowGroup(id: "main") {
             RootView()
                 .environment(navigation)
                 .environment(session)
                 .environment(updates)
-                .task {
-                    // Lock on sleep / screen lock / screensaver.
-                    if autoLock == nil { autoLock = SessionAutoLock(session: session) }
-                    // Auto-lock: drop the Touch ID session after inactivity.
-                    while !Task.isCancelled {
-                        try? await Task.sleep(for: .seconds(15))
-                        session.lockIfExpired()
-                    }
-                }
+                .task { await runAutoLock() }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1280, height: 820)
@@ -43,7 +38,12 @@ struct DotFolioApp: App {
         .modelContainer(container)
         .environment(\.secretStore, KeychainStore.secrets(bundleID: Self.bundleID))
         .commands {
+            CommandGroup(after: .appInfo) {
+                Toggle("Show in Menu Bar", isOn: $showsMenuBarExtra)
+            }
             CommandGroup(after: .newItem) {
+                Button("Go to…") { navigation.isShowingPalette = true }
+                    .keyboardShortcut("k")
                 Button("Import Project Folder…") {
                     if let folder = ProjectFolderPicker.choose() { navigation.folderToImport = PendingFolder(url: folder) }
                 }
@@ -59,6 +59,35 @@ struct DotFolioApp: App {
                 Button("Verify Data…") { navigation.isVerifyingData = true }
                 Button("Erase All Data…") { navigation.isConfirmingErase = true }
             }
+        }
+
+        menuBarExtra
+    }
+
+    /// Quick access from the menu bar: search and copy keys without the main
+    /// window. Same database, Keychain and Touch ID session as the window.
+    @SceneBuilder
+    private var menuBarExtra: some Scene {
+        MenuBarExtra("DOTFOLIO", systemImage: "lock.doc", isInserted: $showsMenuBarExtra) {
+            MenuBarPanel()
+                .environment(navigation)
+                .environment(session)
+                .environment(updates)
+                .modelContainer(container)
+                .environment(\.secretStore, KeychainStore.secrets(bundleID: Self.bundleID))
+                // Keeps the session's auto-lock running even with the main window closed.
+                .task { await runAutoLock() }
+        }
+        .menuBarExtraStyle(.window)
+    }
+
+    /// Lock on sleep / screen lock / screensaver, and drop the Touch ID
+    /// session after inactivity. Safe to run from several scenes.
+    private func runAutoLock() async {
+        if autoLock == nil { autoLock = SessionAutoLock(session: session) }
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(15))
+            session.lockIfExpired()
         }
     }
 

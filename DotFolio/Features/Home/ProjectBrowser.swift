@@ -145,6 +145,15 @@ struct ProjectBrowser: View {
             tabs.active = project.persistentModelID
             navigation.projectToOpen = nil
         }
+        // A Library key picked in the palette: show its provider group.
+        .onChange(of: navigation.libraryProviderToOpen, initial: true) { _, provider in
+            guard let provider else { return }
+            mode = .libraries
+            libraryScope = "all"
+            query = ""
+            libraryProvider = provider
+            navigation.libraryProviderToOpen = nil
+        }
         .onChange(of: tabs.active) { _, id in
             if let id { tabs.add(id) }
             selectedProject?.lastOpenedAt = .now

@@ -16,6 +16,15 @@ final class AppNavigation {
     var folderToImport: PendingFolder?
     /// A project to show in the list once it exists (after an import).
     var projectToOpen: UUID?
+    /// With `projectToOpen`: the environment to show (palette, menu bar).
+    var environmentToOpen: UUID?
+    /// Show the Library on this provider group ("" = Other) — a Library key
+    /// picked in the palette.
+    var libraryProviderToOpen: String?
+    /// ⌘K: the command palette (RootView shows it).
+    var isShowingPalette = false
+    /// "New Project" asked for from the palette (HomeView opens the form).
+    var isRequestingNewProject = false
     /// The result dialog (RootView shows it).
     var report: ResultReport?
 
