@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.5.1", highlights: [
+            ("rectangle.center.inset.filled", "Centered sign-in and import",
+             "Signing in to GitHub, the loading steps, choosing repositories and the import summary now sit in the middle of the window."),
+        ]),
         Entry(version: "0.5.0", highlights: [
             ("folder.badge.plus", "Import a project folder",
              "Drop a project folder on the project list — or choose File ▸ Import Project Folder… — and DOTFOLIO finds its .env files, up to three folders deep, skipping node_modules and build output. Tick the ones to import and pick each one’s environment."),
