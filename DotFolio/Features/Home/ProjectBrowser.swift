@@ -61,7 +61,6 @@ struct ProjectBrowser: View {
         // Library groups are built once per redraw, and only in that mode.
         let library = mode == .libraries ? libraryGroups() : (all: [], shown: [])
         VStack(spacing: 0) {
-            toolbar
             Divider()
             HStack(spacing: 0) {
                 VStack(spacing: 0) {
@@ -145,6 +144,13 @@ struct ProjectBrowser: View {
                 }
             }
         }
+        // Sort and search live in the window's own toolbar, like native Mac
+        // apps: macOS places them after the traffic lights and, in full
+        // screen, slides them in with the menu bar when you point at the top.
+        .toolbar {
+            ToolbarItem(placement: .navigation) { sortMenu }
+            ToolbarItem(placement: .primaryAction) { searchItem }
+        }
         // No auto-open: with no tab open the Overview dashboard is the home view.
         .onChange(of: projects.count) { _, _ in pruneTabs() }
         // A project just imported from a folder: show it.
@@ -201,45 +207,28 @@ struct ProjectBrowser: View {
 
     // MARK: Toolbar
 
-    private var toolbar: some View {
-        HStack(spacing: DS.Space.s) {
-            Menu {
-                Picker("Sort By", selection: $sort) {
-                    ForEach(ProjectSort.allCases) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.inline)
-            } label: {
-                HStack(spacing: DS.Space.xs) {
-                    Image(systemName: "line.3.horizontal.decrease")
-                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
-                }
-                .font(.system(size: 15))
-                .frame(width: 52, height: 36)
-                .contentShape(.capsule)
+    private var sortMenu: some View {
+        Menu {
+            Picker("Sort By", selection: $sort) {
+                ForEach(ProjectSort.allCases) { Text($0.title).tag($0) }
             }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .glassEffect(.regular.interactive(), in: .capsule)
-            .clickableCursor()
-            .symbolMotion(.bounce)
-            .help("Sort projects")
-
-            Spacer(minLength: 16)
-
-            SearchField(text: $query, isFocused: $searchFocused)
-                .frame(maxWidth: 300)
+            .pickerStyle(.inline)
+        } label: {
+            Label("Sort", systemImage: "line.3.horizontal.decrease")
         }
-        .padding(.leading, HomeView.trafficLightInset)
-        .padding(.trailing, DS.Space.l)
-        .padding(.vertical, DS.Space.s)
-        .background {
-            // ⌘F focuses search, like most Mac apps.
-            Button("") { searchFocused = true }
-                .keyboardShortcut("f")
-                .hidden()
-        }
+        .help("Sort projects")
+        .clickableCursor()
+    }
+
+    private var searchItem: some View {
+        SearchField(text: $query, isFocused: $searchFocused)
+            .frame(width: 300)
+            .background {
+                // ⌘F focuses search, like most Mac apps.
+                Button("") { searchFocused = true }
+                    .keyboardShortcut("f")
+                    .hidden()
+            }
     }
 
     // MARK: Bottom of the list column

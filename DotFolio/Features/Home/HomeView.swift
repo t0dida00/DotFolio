@@ -66,8 +66,9 @@ struct HomeView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Content runs under the hidden title bar.
-        .ignoresSafeArea()
+        // Full-window steps run under the hidden title bar. The project list
+        // has a real toolbar (sort, search) there, so it starts below it.
+        .ignoresSafeArea(edges: stage == .list ? [] : .all)
         .frame(minWidth: Self.minSize.width, minHeight: Self.minSize.height)
         .background(Color(nsColor: .textBackgroundColor))
         .animation(.smooth(duration: 0.2), value: stage)
