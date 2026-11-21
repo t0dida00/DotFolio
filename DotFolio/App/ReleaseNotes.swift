@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.7.4", highlights: [
+            ("macwindow", "A real Mac toolbar",
+             "Sort and search now sit in the window's toolbar, right after the traffic lights. In full screen they hide with the menu bar and slide back in when you point at the top of the screen."),
+        ]),
         Entry(version: "0.7.3", highlights: [
             ("text.badge.checkmark", "Contribution guidelines",
              "Pull requests and commits now follow one naming convention, type(scope): summary, documented for contributors. No changes to the app."),
