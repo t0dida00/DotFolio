@@ -67,11 +67,9 @@ struct ProjectBrowser: View {
                     brandHeader
                     Divider()
                         .padding(.horizontal, DS.Space.m)
-                    Picker("Show", selection: $mode) {
-                        ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
+                    // Equal, fixed-width segments: they don't shift when the selection changes.
+                    EqualSegmentedPicker(options: Mode.allCases.map { ($0.rawValue, $0) }, selection: $mode)
+                        .accessibilityLabel("Show")
                     .padding(.horizontal, DS.Space.m)
                     .padding(.vertical, DS.Space.s)
                     .clickableCursor()
@@ -80,12 +78,9 @@ struct ProjectBrowser: View {
                     case .projects:
                         // Drop a project folder here to import its .env files.
                         VStack(spacing: 0) {
-                            Picker("Source", selection: $originFilter) {
-                                ForEach(ProjectOriginFilter.allCases) { Text($0.title).tag($0) }
-                            }
-                            .pickerStyle(.segmented)
-                            .labelsHidden()
-                            .controlSize(.small)
+                            EqualSegmentedPicker(options: ProjectOriginFilter.allCases.map { ($0.title, $0) },
+                                                 selection: $originFilter, controlSize: .small)
+                                .accessibilityLabel("Source")
                             .padding(.horizontal, DS.Space.m)
                             .padding(.bottom, DS.Space.xs)
                             .help("Show every project, those from GitHub/GitLab, or those linked to a folder on this Mac")
@@ -102,16 +97,10 @@ struct ProjectBrowser: View {
                         accountsFooter
                     case .libraries:
                         // Same place as Projects' All · Git · Local.
-                        Picker("Show", selection: $libraryScope) {
-                            Text("All").tag("all")
-                            Text("Library").tag("library")
-                            Text("Dev").tag("development")
-                            Text("Staging").tag("staging")
-                            Text("Prod").tag("production")
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .controlSize(.small)
+                        EqualSegmentedPicker(options: [("All", "all"), ("Library", "library"), ("Dev", "development"),
+                                                       ("Staging", "staging"), ("Prod", "production")],
+                                             selection: $libraryScope, controlSize: .small)
+                            .accessibilityLabel("Show")
                         .padding(.horizontal, DS.Space.m)
                         .padding(.bottom, DS.Space.xs)
                         .help("Every key, only the Library’s own keys, or the project keys of development, staging or production")
@@ -138,7 +127,9 @@ struct ProjectBrowser: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     case .libraries:
                         LibraryView(groups: library.shown, total: library.all.reduce(0) { $0 + $1.keys.count }, focusRequest: libraryFocusRequest,
-                                    scope: libraryScope)
+                                    scope: libraryScope,
+                                    nothingSelected: !library.all.isEmpty && libraryProvider != nil
+                                        && !library.all.contains { $0.id == libraryProvider })
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
