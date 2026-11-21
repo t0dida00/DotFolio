@@ -213,59 +213,6 @@ private struct GitLabHostStep: View {
 
 // MARK: - Building blocks
 
-/// Section with a small gray header, like "Recent" / "Connections".
-struct ListSection<Header: View, Content: View>: View {
-    @ViewBuilder let header: Header
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DS.Space.s) {
-            header
-                .font(DS.Font.panelTitle)
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: DS.Space.xs) { content }
-                .padding(.leading, DS.Space.m)
-        }
-    }
-}
-
-extension ListSection where Header == Text {
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.header = Text(title)
-        self.content = content()
-    }
-}
-
-/// Icon tile + title + secondary line.
-struct ListRow: View {
-    enum Tile { case symbol(String), brand(BrandMark) }
-
-    let tile: Tile
-    let title: Text
-    let subtitle: String
-
-    var body: some View {
-        HStack(spacing: DS.Space.m) {
-            TintedIcon(tint: DS.Palette.violet, size: 40) {
-                switch tile {
-                case .symbol(let name): Image(systemName: name).resizable().scaledToFit().fontWeight(.medium).symbolMotion(.bounce)
-                case .brand(let mark): mark.image.resizable().scaledToFit()
-                }
-            }
-
-            VStack(alignment: .leading, spacing: DS.Space.xxs) {
-                title.font(.body).lineLimit(1)
-                Text(subtitle)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-        }
-        .padding(.vertical, DS.Space.s)
-        .accessibilityElement(children: .combine)
-    }
-}
-
 private struct StepHeader: View {
     let title: String
     let subtitle: String?
@@ -277,31 +224,6 @@ private struct StepHeader: View {
                 Text(subtitle).foregroundStyle(.secondary)
             }
         }
-    }
-}
-
-struct AccountAvatar: View {
-    let name: String
-    let url: URL?
-
-    var body: some View {
-        AsyncImage(url: url) { image in
-            image.resizable().scaledToFill()
-        } placeholder: {
-            Text(initials)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.accentColor)
-        }
-        .frame(width: 40, height: 40)
-        .clipShape(Circle())
-        .accessibilityHidden(true)
-    }
-
-    private var initials: String {
-        let parts = name.split(whereSeparator: { $0 == "-" || $0 == "_" || $0 == " " })
-        return parts.prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
     }
 }
 
