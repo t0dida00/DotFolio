@@ -49,15 +49,20 @@ struct HomeView: View {
                     .frame(maxWidth: 880)
                     .frame(maxWidth: .infinity)
             case .connecting:
-                ScrollView {
-                    ConnectionFlowSteps(model: model)
-                        .frame(maxWidth: model.isWideStep ? 760 : 460, alignment: .leading)
-                        .frame(maxWidth: .infinity)
+                // Every step (code, loading, connected, repo picker, import)
+                // sits in the middle of the window, both ways. A narrow step is
+                // only as wide as its content, so short text isn't pushed left.
+                GeometryReader { viewport in
+                    ScrollView {
+                        CappedWidth(max: model.isWideStep ? 760 : 460) {
+                            ConnectionFlowSteps(model: model)
+                        }
                         .padding(.horizontal, 40)
-                        .padding(.top, 72)
-                        .padding(.bottom, DS.Space.xxxl)
+                        .padding(.vertical, 56)
+                        .frame(maxWidth: .infinity, minHeight: viewport.size.height)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
                 }
-                .scrollBounceBehavior(.basedOnSize)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -72,6 +77,23 @@ struct HomeView: View {
 }
 
 // MARK: - Shared pieces
+
+/// Proposes at most `max` points of width and takes only what the content
+/// needs (a `.frame(maxWidth:)` would always take the full `max`), so a short
+/// step can be centered by its parent.
+struct CappedWidth: Layout {
+    let max: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let width = Swift.min(proposal.width ?? max, max)
+        return child.sizeThatFits(ProposedViewSize(width: width, height: proposal.height))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
+    }
+}
 
 /// GitHub/GitLab mark or a folder, sized for toolbar labels and rows.
 struct ProviderIcon: View {
