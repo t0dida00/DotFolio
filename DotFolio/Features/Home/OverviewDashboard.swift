@@ -5,6 +5,9 @@ import SwiftUI
 /// Shown when no project tab is open: what DotFolio is tracking and what
 /// needs attention. Metadata only — no secret value is read here.
 struct OverviewDashboard: View {
+    /// Charts and rankings list the top 5; the rest is counted below them.
+    static let topCount = 5
+
     @Query private var projects: [Project]
     @Query private var accounts: [Account]
     @Environment(AppNavigation.self) private var navigation
@@ -27,11 +30,11 @@ struct OverviewDashboard: View {
 
                 // Side by side, half the width each; both as tall as the taller one.
                 HStack(alignment: .top, spacing: DS.Space.l) {
-                    Card(title: "Providers in use", subtitle: "Variables per provider, longest bar = most used") {
+                    Card(title: "Providers in use", subtitle: "Top 5 by variables, longest bar = most used") {
                         UsageBars(items: stats.services, symbol: ServiceType.symbol(for:), tint: ServiceType.tint(for:),
                                   emptyText: "Set a Provider on your variables to see usage here.", noun: "providers")
                     }
-                    Card(title: "Services in use", subtitle: "Variables per service — what they’re for") {
+                    Card(title: "Services in use", subtitle: "Top 5 by variables — what they’re for") {
                         UsageBars(items: stats.categories, symbol: ServiceCategory.symbol(for:), tint: ServiceCategory.tint(for:),
                                   emptyText: "Set a Service (Database, Cache…) on your variables to see this.", noun: "services")
                     }
@@ -42,7 +45,7 @@ struct OverviewDashboard: View {
                     Card(title: "Values filled by environment", subtitle: "Variables with a stored value") {
                         EnvironmentMeters(environments: stats.environments)
                     }
-                    Card(title: "Accounts", subtitle: "Ranked by projects, then variables",
+                    Card(title: "Accounts", subtitle: "Top 5 by projects, then variables",
                          trailing: AnyView(Button("Show All", action: onShowAccounts).buttonStyle(.link).clickableCursor())) {
                         AccountRanking(ranks: stats.accountRanking, onOpen: onOpenAccount)
                     }
@@ -187,7 +190,7 @@ private struct UsageBars: View {
     let emptyText: String
     let noun: String
 
-    private var shown: [OverviewStats.ServiceUsage] { Array(items.prefix(8)) }
+    private var shown: [OverviewStats.ServiceUsage] { Array(items.prefix(OverviewDashboard.topCount)) }
     private var maxValue: Int { max(shown.map(\.variables).max() ?? 1, 1) }
     private var labelWidth: CGFloat { TextWidth.fit(shown.map(\.name), extra: 8, min: 60, max: 160) }
 
@@ -319,7 +322,7 @@ private struct AccountRanking: View {
 
                 Divider()
 
-                ForEach(Array(ranks.prefix(5).enumerated()), id: \.element.id) { index, rank in
+                ForEach(Array(ranks.prefix(OverviewDashboard.topCount).enumerated()), id: \.element.id) { index, rank in
                     RowButton(action: { onOpen(rank.account) }) {
                         Text("\(index + 1)").monospacedDigit().foregroundStyle(.secondary)
                             .frame(width: Width.index, alignment: .leading)
@@ -337,6 +340,12 @@ private struct AccountRanking: View {
                             .frame(width: Width.chevron)
                     }
                     .help("Open \(rank.account.login)")
+                }
+                if ranks.count > OverviewDashboard.topCount {
+                    Text("+ \(ranks.count - OverviewDashboard.topCount) more accounts")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, DS.Space.s)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
