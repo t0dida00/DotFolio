@@ -5,6 +5,8 @@ import LocalAuthentication
 import SwiftData
 import SwiftUI
 
+// Size note: One Table with its column builders and the actions on its private state (revealed values, copy, delete), so it stays in one file; the small controls live in VariableControls.swift.
+
 /// The editable variables table shared by a project environment and the
 /// Library: #, Name, Value, Service, Provider, Account, Link.
 /// - Name / Link / Service / Provider / Account: edit in place, saved on

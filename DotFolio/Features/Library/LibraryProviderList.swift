@@ -14,18 +14,9 @@ struct LibraryGroup: Identifiable {
     var id: String { provider.lowercased() }
     var title: String { provider.isEmpty ? "Other" : provider }
 
+    /// Grouping rules live in DotFolioKit (`Library.groups`, tested).
     static func make(from keys: [Variable]) -> [LibraryGroup] {
-        let byProvider = Dictionary(grouping: keys) { $0.serviceLabel.lowercased() }
-        return byProvider.values
-            .map { keys in
-                LibraryGroup(provider: keys.first(where: \.inLibrary)?.serviceLabel ?? keys[0].serviceLabel,
-                             keys: keys.sorted(by: Library.displayOrder))
-            }
-            .sorted { a, b in
-                // "Other" last, the rest alphabetically.
-                if a.provider.isEmpty != b.provider.isEmpty { return !a.provider.isEmpty }
-                return a.provider.localizedStandardCompare(b.provider) == .orderedAscending
-            }
+        Library.groups(keys).map { LibraryGroup(provider: $0.provider, keys: $0.keys) }
     }
 }
 

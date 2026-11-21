@@ -40,4 +40,18 @@ struct LibraryEverythingTests {
         let after = try everything()
         #expect(after.map(Library.origin(of:)) == ["Library"])   // the Library's own key stays
     }
+
+    @Test func groupsByProviderWithOtherLast() throws {
+        let context = ModelContext(try DotFolioSchema.makeContainer(inMemory: true))
+        func key(_ name: String, _ provider: String) -> Variable {
+            let v = Variable(key: name, environment: nil)
+            v.inLibrary = true
+            v.serviceLabel = provider
+            context.insert(v)
+            return v
+        }
+        let groups = Library.groups([key("B", "stripe"), key("A", "Stripe"), key("X", ""), key("K", "OpenAI")])
+        #expect(groups.map(\.provider) == ["OpenAI", "stripe", ""])
+        #expect(groups[1].keys.map(\.key) == ["A", "B"])
+    }
 }
