@@ -812,17 +812,33 @@ struct ProjectTile: View {
         self.size = size
     }
 
+    /// Same proportions as AppMark: ~22.5% corners and a glyph that fills
+    /// about 60% of the tile (soft tint background, same-hue glyph).
+    private enum Ratio {
+        static let corner: CGFloat = 0.225
+        static let glyph: CGFloat = 0.6
+    }
+
     var body: some View {
-        TintedIcon(tint: tint, size: size) {
-            switch origin {
-            case .github: BrandMark.github.image.resizable().scaledToFit().frame(width: size * 0.5, height: size * 0.5)
-            case .gitlab: BrandMark.gitlab.image.resizable().scaledToFit().frame(width: size * 0.5, height: size * 0.5)
-            case .local: Image(systemName: "laptopcomputer").font(.system(size: size * 0.4, weight: .medium))
-            case .manual: Image(systemName: "square.and.pencil").font(.system(size: size * 0.4, weight: .medium))
-            }
+        let shape = RoundedRectangle(cornerRadius: size * Ratio.corner, style: .continuous)
+        glyph
+            .frame(width: size * Ratio.glyph, height: size * Ratio.glyph)
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(tint.opacity(0.14), in: shape)
+            .overlay(shape.strokeBorder(tint.opacity(0.18), lineWidth: 1))
+            .help(helpText)
+            .accessibilityLabel(helpText)
+    }
+
+    @ViewBuilder
+    private var glyph: some View {
+        switch origin {
+        case .github: BrandMark.github.image.resizable().scaledToFit()
+        case .gitlab: BrandMark.gitlab.image.resizable().scaledToFit()
+        case .local: Image(systemName: "laptopcomputer").resizable().scaledToFit().fontWeight(.medium)
+        case .manual: Image(systemName: "square.and.pencil").resizable().scaledToFit().fontWeight(.medium)
         }
-        .help(helpText)
-        .accessibilityLabel(helpText)
     }
 
     private var helpText: String {
