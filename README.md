@@ -22,6 +22,10 @@
 
 ---
 
+<p align="center">
+  <img src=".github/assets/overview.png" width="800" alt="DOTFOLIO Overview: projects, variables, providers and accounts at a glance">
+</p>
+
 ## About
 
 DOTFOLIO is what I wanted my `.env` files to be: in one place, locked, and still easy to use. Each value lives in the macOS Keychain behind Touch ID. Next to it, DOTFOLIO keeps what you forget months later: what the key is for, who provides it, which account created it, and where to manage it.
@@ -64,6 +68,18 @@ Unzip, move **DOTFOLIO.app** to Applications, and open it. Builds aren't notariz
 - Export `.env` to the clipboard (cleared after 60 seconds), the project folder or anywhere.
 - Search projects, keys, providers and accounts; open projects in tabs.
 - Verify Data cross-checks the database against the Keychain and repairs what it safely can.
+
+## Screenshots
+
+<p align="center">
+  <img src=".github/assets/project.png" width="800" alt="A project's development variables, read-only, with Service and Provider filled in">
+  <br><sub>A project: one table per environment, read-only until you turn on Edit.</sub>
+</p>
+
+<p align="center">
+  <img src=".github/assets/library.png" width="800" alt="The Library: keys grouped by provider, from the Library and every project">
+  <br><sub>The Library: reusable keys next to every project's keys, grouped by provider.</sub>
+</p>
 
 ## Security
 
