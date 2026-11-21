@@ -90,6 +90,19 @@ struct ProjectPreview: View {
                 }
             }
             Spacer(minLength: 12)
+            // Local projects: the import was a snapshot, so read the folder's .env files again.
+            if let folder = ProjectFolder.resolve(project) {
+                Button { folderToReload = folder } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                    .symbolMotion(.bounce)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .buttonBorderShape(.capsule)
+                    .help("Reload from Folder: read the .env files again and review what changed")
+                    .accessibilityLabel("Reload from Folder")
+                    .clickableCursor()
+            }
             Button { isEditing = true } label: {
                 Image(systemName: "pencil")
             }
@@ -136,22 +149,11 @@ struct ProjectPreview: View {
             if let folder = ProjectFolder.resolve(project) {
                 GridRow {
                     label("Local folder")
-                    HStack(spacing: DS.Space.s) {
-                        Text(folder.path(percentEncoded: false))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .textSelection(.enabled)
-                            .help(folder.path(percentEncoded: false))
-                        // The import was a snapshot: read the folder's .env files again.
-                        Button {
-                            folderToReload = folder
-                        } label: {
-                            Label("Reload from Folder", systemImage: "arrow.clockwise")
-                        }
-                        .buttonStyle(.link)
-                        .help("Read the .env files in this folder again and review what changed")
-                        .clickableCursor()
-                    }
+                    Text(folder.path(percentEncoded: false))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                        .help(folder.path(percentEncoded: false))
                 }
             }
             GridRow {
