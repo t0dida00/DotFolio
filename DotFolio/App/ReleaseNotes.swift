@@ -7,6 +7,14 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "2.1.0", highlights: [
+            ("command", "Go anywhere with ⌘K",
+             "Type part of a project, key or command. ↩ opens it, ⌘C copies a key's value and ⇧⌘C its .env line. Only names and sources are searched, never values."),
+            ("menubar.rectangle", "Copy from the menu bar",
+             "Find and copy a key from the menu bar without opening DOTFOLIO: click copies the value, ⌥-click the .env line. Turn it off in DOTFOLIO ▸ Show in Menu Bar."),
+            ("rectangle.split.3x1", "Compare environments",
+             "Table | File | Compare shows each name across development, staging and production: set, empty or missing. Compare Values (Touch ID) tells you which are the same and which differ, without ever showing them."),
+        ]),
         Entry(version: "2.0.0", highlights: [
             ("square.stack.3d.up", "DOTFOLIO 2",
              "A rebuilt foundation: the app is reorganized feature by feature into small, focused pieces, with more of its logic tested. Your projects, keys and Keychain values carry over unchanged."),
