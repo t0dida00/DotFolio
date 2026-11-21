@@ -7,6 +7,20 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.5.0", highlights: [
+            ("folder.badge.plus", "Import a project folder",
+             "Drop a project folder on the project list — or choose File ▸ Import Project Folder… — and DOTFOLIO finds its .env files, up to three folders deep, skipping node_modules and build output. Tick the ones to import and pick each one’s environment."),
+            ("laptopcomputer", "Local projects",
+             "Projects linked to a folder on this Mac get their own tile and show their path. Filter the list by All, Git or Local. Signing out of GitHub never deletes a local project."),
+            ("arrow.down.doc", "Drop .env files on Add variable",
+             "Add variable has a drop zone: the files’ names, values and #Service/Provider/Account/Link comments go to the environment shown. Values already there are kept."),
+            ("doc.on.doc", "Copy a whole line",
+             "The copy button, now after Link, copies KEY=value #Service/Provider/Account/Link — so does double-clicking a row. The icon shows a tick when it’s done."),
+            ("square.and.pencil", "Edit long values",
+             "With Edit on, click a value to edit it in a larger editor that wraps long text. The eye inside Add variable’s Value field shows what you typed."),
+            ("checkmark.circle", "Clear results",
+             "Adding, saving, deleting, importing and signing in end with a short dialog — green when it worked, amber when nothing changed, red when it didn’t. Required fields are marked with *."),
+        ]),
         Entry(version: "0.4.1", highlights: [
             ("number", "Variables counted once",
              "A name in development, staging and production is one variable. The project page and the Overview — totals, missing values, no source, providers, services, accounts, Needs attention and Recently updated — now count it once, so the numbers agree."),
