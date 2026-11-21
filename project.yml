@@ -8,8 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.7.0"
-    CURRENT_PROJECT_VERSION: "15"
+    MARKETING_VERSION: "0.7.1"
+    CURRENT_PROJECT_VERSION: "16"
     # Free Personal Team (Apple ID in Xcode). The data protection keychain needs
     # a real signature + provisioning profile; ad-hoc builds get
     # errSecMissingEntitlement when saving values.

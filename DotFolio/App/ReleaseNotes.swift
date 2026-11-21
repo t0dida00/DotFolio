@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.7.1", highlights: [
+            ("chevron.left.forwardslash.chevron.right", "Open source",
+             "DOTFOLIO is now open source under the MIT License, with a full README on GitHub covering features, the security model, building from source and contributing."),
+        ]),
         Entry(version: "0.7.0", highlights: [
             ("wand.and.stars", "Smarter sources",
              "DOTFOLIO now recognizes over 150 providers — Groq, xAI, Clerk, Convex, Railway, Contentful, LaunchDarkly, Open-Meteo and more — plus well-known names like KV_REST_API_URL and AUTH_SECRET and more key formats. Suggest Sources opens once to fill the empty ones you already have."),
