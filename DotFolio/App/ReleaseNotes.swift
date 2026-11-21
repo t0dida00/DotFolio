@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.5.4", highlights: [
+            ("app.badge", "A real app icon",
+             "DOTFOLIO has its own icon in the Dock, Finder and Launchpad, and the logo inside the app matches it."),
+        ]),
         Entry(version: "0.5.3", highlights: [
             ("chart.bar", "Top 5 in the Overview",
              "Providers in use, Services in use and Accounts list their top 5, with a count of the rest underneath."),
