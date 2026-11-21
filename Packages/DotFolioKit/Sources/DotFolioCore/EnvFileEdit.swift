@@ -50,7 +50,13 @@ public enum EnvFileEdit {
     ///   here is only changed when the text gives it a non-empty value.
     @MainActor
     public static func plan(_ text: String, for environment: ProjectEnvironment, currentValues: [UUID: String]) -> Plan {
-        let entries = EnvParser.parse(text)
+        plan(entries: EnvParser.parse(text), for: environment, currentValues: currentValues)
+    }
+
+    /// Same as `plan(_:for:currentValues:)` for entries already parsed
+    /// (e.g. several files merged for one environment).
+    @MainActor
+    public static func plan(entries: [EnvEntry], for environment: ProjectEnvironment, currentValues: [UUID: String]) -> Plan {
         let current = environment.sortedVariables
         let byKey = Dictionary(current.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first })
         var plan = Plan()

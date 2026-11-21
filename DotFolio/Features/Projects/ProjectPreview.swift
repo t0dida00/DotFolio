@@ -20,6 +20,8 @@ struct ProjectPreview: View {
     @State private var editUnlocked = false
     /// Suggest Sources for the environment shown (only while Edit is on).
     @State private var isSuggesting = false
+    /// Local folder whose .env files are being reloaded (sheet).
+    @State private var folderToReload: URL?
 
     var body: some View {
         // Sorted once per redraw and handed down (each read used to re-sort).
@@ -50,6 +52,16 @@ struct ProjectPreview: View {
                     .overlay(alignment: .top) { Divider() }
             }
         }
+        .sheet(item: Binding(get: { folderToReload.map(ReloadTarget.init) },
+                             set: { folderToReload = $0?.url })) { target in
+            FolderReloadSheet(project: project, folder: target.url)
+        }
+    }
+
+    /// Identifiable wrapper for the reload sheet.
+    private struct ReloadTarget: Identifiable {
+        let url: URL
+        var id: URL { url }
     }
 
     // MARK: Top: project information
@@ -124,11 +136,22 @@ struct ProjectPreview: View {
             if let folder = ProjectFolder.resolve(project) {
                 GridRow {
                     label("Local folder")
-                    Text(folder.path(percentEncoded: false))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .textSelection(.enabled)
-                        .help(folder.path(percentEncoded: false))
+                    HStack(spacing: DS.Space.s) {
+                        Text(folder.path(percentEncoded: false))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                            .help(folder.path(percentEncoded: false))
+                        // The import was a snapshot: read the folder's .env files again.
+                        Button {
+                            folderToReload = folder
+                        } label: {
+                            Label("Reload from Folder", systemImage: "arrow.clockwise")
+                        }
+                        .buttonStyle(.link)
+                        .help("Read the .env files in this folder again and review what changed")
+                        .clickableCursor()
+                    }
                 }
             }
             GridRow {
