@@ -91,6 +91,14 @@ Never skip a release after changing `main`, and never re-use or move a published
 
 Until the app is signed with a paid Developer ID and notarized, the zip is for the owner’s own Macs (Gatekeeper will warn elsewhere) and updates are manual (download, replace the app).
 
+## After every change: restart the app once
+
+When a change is done (any code change, not only UI), restart DOTFOLIO once so the user sees it right away:
+
+1. Build the signed Debug app: `xcodebuild -project DotFolio.xcodeproj -scheme DotFolio -configuration Debug build` (default DerivedData — the `-derivedDataPath build` copy has no provisioning profile and can't save to the Keychain).
+2. If you launched a copy earlier in the session, quit **only that PID**, then `open -n ~/Library/Developer/Xcode/DerivedData/DotFolio-*/Build/Products/Debug/DOTFOLIO.app` and note the new PID.
+3. If the user's own copy is running from Xcode (parent process `debugserver`), don't touch it and don't open a second copy: tell the user to press ⌘R in Xcode to restart with the change.
+
 ## UI changes: verify before finishing
 
 Never report a UI change as done from reading code alone. Before ending the turn:
@@ -98,12 +106,12 @@ Never report a UI change as done from reading code alone. Before ending the turn
 1. Build succeeds and `swift test` passes.
 2. Launch the app and **look at every screen/state you touched** (screenshot it and read the image):
    ```bash
-   open -n build/Build/Products/Debug/DOTFOLIO.app
+   open -n ~/Library/Developer/Xcode/DerivedData/DotFolio-*/Build/Products/Debug/DOTFOLIO.app
    # window id of DotFolio, then:
    screencapture -x -o -l <windowID> /tmp/shot.png
    ```
    Check states too: empty, one item, many items, long text, error, dark mode.
 3. Check each screenshot for: overlapping or clipped text, labels wrapping unexpectedly, misaligned rows/columns, uneven heights of tiles in the same row, controls that don't span the width they should, empty gaps, wrong colors in dark mode.
 4. Fix what you find and repeat steps 1–3.
-5. Never `pkill`/`killall` DOTFOLIO: the user is usually running it from Xcode, and killing it shows up there as `Thread 1: signal SIGTERM`. Launch your own copy with `open -n …` and, when done, quit only that copy by its PID (e.g. `pgrep -f "build/Build/Products/Debug/DOTFOLIO.app"` then `kill <pid>`).
+5. Never `pkill`/`killall` DOTFOLIO: the user is usually running it from Xcode, and killing it shows up there as `Thread 1: signal SIGTERM`. Xcode's ⌘R runs the same DerivedData binary, so `pgrep` finds the user's copy too: quit only the PID that `open -n` gave you, and never one whose parent is `debugserver` (`ps -o ppid= -p <pid>`).
 6. If you cannot capture the window (Screen Recording permission missing), say so explicitly in the reply, list exactly which screens are unverified, and ask the user for a screenshot. Do not claim the UI is correct.
