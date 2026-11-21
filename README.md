@@ -1,229 +1,127 @@
-<div align="center">
+<p align="center">
+  <img src="DotFolio/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" height="128" alt="DOTFOLIO">
+</p>
 
-<img src="DotFolio/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" height="128" alt="DOTFOLIO icon">
+<h1 align="center">DOTFOLIO</h1>
 
-# DOTFOLIO
+<p align="center">
+  Every <code>.env</code>, safe in your Keychain.<br>
+  Native macOS app. Free and open source.
+</p>
 
-**Every `.env`, safe in your Keychain.**
+<p align="center">
+  <a href="https://github.com/t0dida00/DotFolio/releases/latest">Download</a> ·
+  <a href="https://github.com/t0dida00/DotFolio/releases">Releases</a> ·
+  <a href="https://github.com/t0dida00/DotFolio/issues">Issues</a>
+</p>
 
-A native macOS app that keeps every project's environment variables in one place: values locked in the Keychain, everything else searchable.
-
-[![Latest release](https://img.shields.io/github/v/release/t0dida00/DotFolio?label=release)](https://github.com/t0dida00/DotFolio/releases/latest)
-![macOS 26+](https://img.shields.io/badge/macOS-26%2B-black?logo=apple)
-![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
-![SwiftUI · SwiftData](https://img.shields.io/badge/SwiftUI-SwiftData-0A84FF)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-
-[Download](https://github.com/t0dida00/DotFolio/releases/latest) · [Features](#features) · [Security](#security-model) · [Build from source](#build-from-source)
-
-</div>
+<p align="center">
+  <a href="https://github.com/t0dida00/DotFolio/releases"><img src="https://img.shields.io/github/v/release/t0dida00/DotFolio" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
+</p>
 
 ---
 
-## Table of contents
+## About
 
-- [Why DOTFOLIO](#why-dotfolio)
-- [Features](#features)
-- [Install](#install)
-- [Usage](#usage)
-- [Security model](#security-model)
-- [Architecture](#architecture)
-- [Build from source](#build-from-source)
-- [Testing](#testing)
-- [Releasing](#releasing)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [Reporting a security issue](#reporting-a-security-issue)
-- [License](#license)
+DOTFOLIO is what I wanted my `.env` files to be: in one place, locked, and still easy to use. Each value lives in the macOS Keychain behind Touch ID. Next to it, DOTFOLIO keeps what you forget months later: what the key is for, who provides it, which account created it, and where to manage it.
+
+It's built with Swift 6, SwiftUI and SwiftData. Secret values never touch the database or the logs, and reach a file only when you export one.
 
 ## Why DOTFOLIO
 
-Secrets usually live in `.env` files scattered across folders, copied between machines and one `git add .` away from a leak. And months later nobody remembers which Stripe account a key belongs to.
+Your options for project secrets today:
 
-DOTFOLIO keeps the **value** in the macOS Keychain, behind Touch ID. It keeps the **context** next to it: what the key is for, who provides it, which account created it, and where to manage it.
+- **`.env` files**: plain text in every project folder, copied between machines, one `git add .` away from a leak.
+- **Password managers**: they keep a value safe, but don't know your projects, environments or which provider a key belongs to.
+- **Cloud secret managers** (Doppler, Infisical, Vault): built for teams and servers; your values live on someone else's infrastructure.
 
-| | `.env` files | DOTFOLIO |
-|---|---|---|
-| Where values live | Plain text on disk | macOS Keychain, this Mac only |
-| Reading a value | Anyone with file access | Touch ID or Mac password |
-| Which account / console? | Comments, memory | Service · Provider · Account · Link per key |
-| Across projects | Copy-paste | Library of reusable keys, search everything |
+DOTFOLIO is the missing one: native, local, organized around your projects, and open source.
+
+## Installation
+
+| Platform | Status | Install |
+| --- | --- | --- |
+| macOS 26+ | Stable | Download the `.zip` from [GitHub Releases](https://github.com/t0dida00/DotFolio/releases/latest) |
+| Linux / Windows | Not planned | DOTFOLIO relies on the macOS Keychain and Touch ID |
+
+Unzip, move **DOTFOLIO.app** to Applications, and open it. Builds aren't notarized yet, so the first time macOS asks for confirmation: right-click ▸ Open, or allow it in System Settings ▸ Privacy & Security.
+
+**DOTFOLIO ▸ Check for Updates…** tells you when a new version is out. Replace the app; your projects and Keychain values carry over.
 
 ## Features
 
-### Projects
-- **Three ways in:** create by hand, import GitHub repositories (read-only) with their `.env.example`, or **drop a project folder**. DOTFOLIO finds its `.env*` files up to three folders deep and asks which to import.
-- **Environments:** development, staging and production, each as a table or as an editable `.env` file view.
-- **Workspace:** projects open in Safari-style tabs; filter by **All · Git · Local**; search by name, repo, key, provider or account.
+- Projects with development, staging and production, as a table or as a `.env` file you can edit.
+- Import a GitHub repository and its `.env.example`, read-only.
+- Drop a project folder: DOTFOLIO finds its `.env*` files and asks which to import.
+- Drop `.env` files on a project or the Library: values already there are never overwritten.
+- Tables open read-only: double-click a row to copy it as `KEY=value #Service/Provider/Account/Link`.
+- Show Values reveals a whole table after one Touch ID prompt; long values open in a larger editor.
+- Smart sources: Service and Provider guessed from 150+ providers, well-known names and key formats.
+- A Library of reusable keys, next to every project's keys, filtered by environment.
+- Accounts: the logins your keys come from, and every key that uses them.
+- Overview: missing values, keys without a source, stale values, providers and services in use.
+- Export `.env` to the clipboard (cleared after 60 seconds), the project folder or anywhere.
+- Search projects, keys, providers and accounts; open projects in tabs.
+- Verify Data cross-checks the database against the Keychain and repairs what it safely can.
 
-### Variables
-- **Read-only by default:** double-click a row to copy it as a `.env` line (`KEY=value #Service/Provider/Account/Link`); turn on **Edit** to change it.
-- **Show Values** after one Touch ID prompt. Long values open in a multi-line editor.
-- **Drop `.env` files** on *Add variable*. Values already there are never overwritten.
-- **Export `.env`** to the clipboard (auto-cleared), to the project folder (with a `.gitignore` check) or anywhere.
+## Security
 
-### Smart sources
-- Service and Provider are guessed from the name and value: **150+ providers**, well-known names (`KV_REST_API_URL`, `AUTH_SECRET`…) and key formats (`sk-ant-`, `gsk_`, `xoxb-`…).
-- **Suggest Sources** lets you review guesses before filling empty fields.
-- `#Service/Provider/Account/Link` comments in `.env` files fill those columns on import.
+- Values are stored only in the data protection keychain, tied to the app's signature.
+- Items are this-Mac-only and readable only while the Mac is unlocked; they are never synced to iCloud.
+- The Keychain itself requires Touch ID or the Mac password to return a value, not just the UI.
+- One unlock per session; it locks after 5 minutes idle, on sleep and on screen lock.
+- Keychain items are removed before the metadata that points to them, so no secret is orphaned.
+- GitHub access is read-only. The app is sandboxed, with outgoing HTTPS only.
 
-### Library, accounts and overview
-- **Library:** reusable keys next to every project's keys, filtered by All · Library · Dev · Staging · Prod.
-- **Accounts:** the logins your keys come from, their provider projects and every key that uses them.
-- **Overview:** missing values, keys without a source, stale values, providers and services in use, top accounts.
-- **Verify Data** cross-checks the database against the Keychain and repairs what it safely can.
-- **Check for Updates** and **What's New**, driven by this repository's releases.
+Values never leave your Mac, so wiping or losing it loses them. Keep an export of what matters somewhere safe.
 
-## Install
+## Free and open source
 
-1. Download `DOTFOLIO-x.y.z.zip` from the [latest release](https://github.com/t0dida00/DotFolio/releases/latest).
-2. Unzip it and move **DOTFOLIO.app** to Applications.
-3. The app isn't notarized yet, so macOS warns the first time you open it. Right-click ▸ **Open** (or allow it in System Settings ▸ Privacy & Security).
+DOTFOLIO is free, with no account, subscription or telemetry. The code is MIT-licensed; use it, fork it, ship your own build. If you do, create your own GitHub App for sign-in (see [Build and contribute](#build-and-contribute)).
 
-**Requirements:** macOS 26 or later, on a Mac with Touch ID or a login password.
+## Build and contribute
 
-**Updating:** **DOTFOLIO ▸ Check for Updates…** tells you when a new version is out. Download it and replace the app; your projects and Keychain values carry over.
-
-## Usage
-
-| To… | Do this |
-|---|---|
-| Add a project from a folder | Drop the folder on the project list, or **File ▸ Import Project Folder…** (⇧⌘O) |
-| Import from GitHub | **Import from GitHub** at the bottom of the project list |
-| Create a project by hand | **New Project** (⌘N) |
-| Copy a variable | Double-click its row (table locked), or the copy button |
-| Change values | Turn on **Edit** above the table |
-| Fill Service / Provider | **DOTFOLIO ▸ Suggest Sources…** |
-| Search | ⌘F |
-| Close a tab | ⌘W |
-| Check the data | **DOTFOLIO ▸ Verify Data…** |
-
-## Security model
-
-Security is the point of the app, so these rules are not negotiable:
-
-- **Values only in the Keychain.** Each value is a generic-password item in the *data protection keychain*, tied to the app's signature, so other apps can't read it. SwiftData stores metadata only, never a value. Nothing is logged.
-- **This Mac only, while unlocked.** Items use `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`: never synced to iCloud Keychain, never restored onto another Mac.
-- **User presence enforced by the Keychain.** Items carry `.userPresence`, so the Keychain itself refuses to return a value without Touch ID or the Mac password.
-- **Session lock.** One authenticated session is reused for reveal and copy. It locks after 5 minutes of inactivity, on sleep and on screen lock.
-- **Safe writes and deletes.** A new value goes into a new item before the old one is removed. Keychain items are deleted before the metadata that points to them, so no secret is ever orphaned.
-- **Read-only repositories.** GitHub sign-in uses a GitHub App with *Contents: read* and *Metadata: read* only. The token is kept in the Keychain.
-- **Sandboxed.** App Sandbox and Hardened Runtime are on. Network access is outgoing HTTPS only. Files are touched only where you pick or drop them.
-- **Clipboard.** Copied values are marked *concealed* (clipboard managers skip them) and cleared after 60 seconds.
-
-> [!IMPORTANT]
-> Because values never leave this Mac, **losing or wiping the Mac loses them**. Keep an export of what matters somewhere safe until encrypted backups ship (see [Roadmap](#roadmap)).
-
-## Architecture
-
-A thin SwiftUI app on top of a local Swift package that holds all the logic and its tests.
-
-```
-DotFolio/                      macOS app: SwiftUI views only
-├─ App/                        entry point, menu commands, updates, release notes
-├─ Features/
-│  ├─ Home/                    project list, tabs, project page, tables, import, Overview, GitHub sign-in
-│  ├─ Accounts/                accounts and their keys
-│  └─ Libraries/               the Library
-├─ Shared/                     design system, Keychain environment, clipboard, helpers
-└─ Resources/                  app icon, accent color, entitlements
-Packages/DotFolioKit/          logic, unit-tested
-├─ DotFolioModels              SwiftData models, search, Overview stats, source guessing
-├─ DotFolioSecurity            Keychain store, Touch ID session lock
-├─ DotFolioEnv                 .env parsing and export, folder scan (no dependencies)
-├─ DotFolioIntegrations        GitHub client (read-only)
-└─ DotFolioCore                use cases: create, import, edit, copy, delete, verify, erase
-scripts/render-app-icon.swift  renders the app icon from the logo design
-project.yml                    XcodeGen spec (the .xcodeproj is generated)
-```
-
-| Layer | Depends on | Responsibility |
-|---|---|---|
-| App (SwiftUI) | DotFolioKit | Screens, navigation, design system |
-| DotFolioCore | Models, Security, Env | Use cases: values go to the Keychain before metadata |
-| DotFolioModels | — | SwiftData schema, search, stats, source catalog |
-| DotFolioSecurity | — | `SecretStore` protocol, Keychain implementation, session lock |
-| DotFolioEnv | — | `.env` parser and exporter, folder scanning |
-| DotFolioIntegrations | — | Read-only GitHub client |
-
-Conventions (design tokens, terminology, security and release rules) are documented in [CLAUDE.md](CLAUDE.md).
-
-## Build from source
-
-**Prerequisites**
-- macOS 26, Xcode 26 or later (Swift 6)
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
-- An Apple ID signed in to Xcode (a free Personal Team works). The data protection keychain needs a signed app with a provisioning profile. Unsigned builds can't save values (`errSecMissingEntitlement`).
-
-**Steps**
+You need macOS 26, Xcode 26 or later, [XcodeGen](https://github.com/yonaskolb/XcodeGen) and an Apple ID signed in to Xcode. The data protection keychain needs a signed build.
 
 ```sh
 git clone https://github.com/t0dida00/DotFolio.git
 cd DotFolio
-# set DEVELOPMENT_TEAM in project.yml to your Team ID (Xcode ▸ Settings ▸ Accounts)
-xcodegen generate
-open DotFolio.xcodeproj   # run the DotFolio scheme with ⌘R
+xcodegen generate   # after setting DEVELOPMENT_TEAM in project.yml
+open DotFolio.xcodeproj
 ```
 
-Run `xcodegen generate` again after adding or removing files. Never edit the `.xcodeproj` by hand.
+- App (SwiftUI views): [`DotFolio/`](DotFolio)
+- Logic and tests (Swift package): [`Packages/DotFolioKit/`](Packages/DotFolioKit). Run `swift test` there.
+- Conventions, security rules and the release checklist: [CLAUDE.md](CLAUDE.md)
+- GitHub sign-in: create a GitHub App with *Contents* and *Metadata* read-only and Device Flow enabled, then set its Client ID in [`GitHubConfig.swift`](DotFolio/App/GitHubConfig.swift).
 
-<details>
-<summary><b>Using your own GitHub App (optional)</b></summary>
+Keep views thin and put logic in `DotFolioKit` with tests. Open an issue before large changes.
 
-Create one at <https://github.com/settings/apps/new>:
+## Docs and community
 
-- Repository permissions: **Contents → Read-only**, **Metadata → Read-only**
-- **Enable Device Flow** checked
-- **Expire user authorization tokens** unchecked
-- Webhook: not needed (uncheck *Active*)
+- [Releases](https://github.com/t0dida00/DotFolio/releases): what changed in each version
+- [Issues](https://github.com/t0dida00/DotFolio/issues): bugs and feature requests. Include your macOS version, the DOTFOLIO version (shown under the logo) and steps to reproduce.
+- [Report a vulnerability](https://github.com/t0dida00/DotFolio/security/advisories/new) privately; please don't open a public issue for security problems.
 
-Put its Client ID and URL name in `DotFolio/App/GitHubConfig.swift`. Neither is a secret, since device flow needs no client secret.
+## Contributors
 
-</details>
+<a href="https://github.com/t0dida00/DotFolio/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=t0dida00/DotFolio" alt="Contributors">
+</a>
 
-## Testing
+Want to join them? Read [Build and contribute](#build-and-contribute).
 
-```sh
-cd Packages/DotFolioKit
-swift test
-```
+## Star History
 
-The suites cover models, security, `.env` handling, integrations and use cases. They use an in-memory secret store and an in-memory SwiftData container, so they need no signing or Keychain access. `IntegrityCheck` must stay clean after any change that writes variables or Keychain items.
-
-## Releasing
-
-Every update to `main` ships a release, so **Check for Updates…** always reflects `main`.
-
-1. Bump `MARKETING_VERSION` (semver) and `CURRENT_PROJECT_VERSION` in `project.yml`, then `xcodegen generate`.
-2. Add the highlights to `DotFolio/App/ReleaseNotes.swift` (shown in *What's New*).
-3. Test and build, commit `Release vX.Y.Z`, tag `vX.Y.Z`, push `main` and the tag.
-4. Build the Release configuration, zip `DOTFOLIO.app`, publish a GitHub Release with the notes and the zip.
-
-Full checklist with commands: [CLAUDE.md › Releases](CLAUDE.md#releases-every-update-to-main-ships-a-release).
-
-## Roadmap
-
-- [ ] Encrypted, password-protected backups to restore on a new Mac
-- [ ] Two-way sync between a local project and its `.env` files
-- [ ] Developer ID signing and notarization
-- [ ] GitLab and self-hosted GitLab sign-in
-- [ ] `dotfolio` command-line tool sharing the same Keychain items
-
-## Contributing
-
-Issues and pull requests are welcome.
-
-1. Fork the repo and create a branch from `main`.
-2. Put logic in `DotFolioKit` with tests; keep views thin.
-3. Follow the conventions in [CLAUDE.md](CLAUDE.md): design tokens, no placeholder text, required fields marked `*`, Keychain before metadata.
-4. Make sure `swift test` passes and the app builds, then open a pull request describing the change and how you checked it.
-
-## Reporting a security issue
-
-Please **don't open a public issue** for security problems. Use GitHub's [private vulnerability reporting](https://github.com/t0dida00/DotFolio/security/advisories/new) instead, so a fix can ship before details are public.
+<a href="https://star-history.com/#t0dida00/DotFolio&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=t0dida00/DotFolio&type=Date&theme=dark">
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=t0dida00/DotFolio&type=Date">
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=t0dida00/DotFolio&type=Date">
+  </picture>
+</a>
 
 ## License
 
-DOTFOLIO is open source under the [MIT License](LICENSE). You may use, modify and redistribute it, including commercially, as long as the copyright and license notice are kept.
-
-The GitHub App ID in `DotFolio/App/GitHubConfig.swift` belongs to the author's GitHub App. If you ship your own build, create your own GitHub App (see [Build from source](#build-from-source)).
+DOTFOLIO is licensed under the [MIT License](LICENSE).
