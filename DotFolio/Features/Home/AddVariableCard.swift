@@ -182,11 +182,12 @@ struct AddVariableCard: View {
         .padding(DS.Space.m)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .help(dropHint)
-        .background(dropTargeted ? Color.accentColor.opacity(0.08) : Color.clear,
+        // Light brand violet, a little stronger while files hover over it.
+        .background(DS.Palette.violet.opacity(dropTargeted ? 0.14 : 0.06),
                     in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous)
-                .strokeBorder(dropTargeted ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.separator),
+                .strokeBorder(dropTargeted ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(DS.Palette.violet.opacity(0.3)),
                               style: StrokeStyle(lineWidth: dropTargeted ? 2 : 1, dash: [6, 4]))
         )
         .dropDestination(for: URL.self) { urls, _ in
