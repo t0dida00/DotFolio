@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "0.6.2", highlights: [
+            ("square.grid.2x2", "Clearer project icons",
+             "Project icons follow the app icon’s proportions: rounder corners and a larger GitHub, GitLab, local or hand-made mark."),
+        ]),
         Entry(version: "0.6.1", highlights: [
             ("line.3.horizontal.decrease.circle", "Filter the Library",
              "Under Libraries, pick All, Library, Dev, Staging or Prod to see every key, only the Library’s own, or the project keys of one environment."),
