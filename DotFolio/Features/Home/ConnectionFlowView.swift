@@ -248,8 +248,8 @@ struct ListRow: View {
         HStack(spacing: DS.Space.m) {
             TintedIcon(tint: DS.Palette.violet, size: 40) {
                 switch tile {
-                case .symbol(let name): Image(systemName: name).font(.system(size: 16, weight: .medium)).symbolMotion(.bounce)
-                case .brand(let mark): mark.image.resizable().scaledToFit().frame(width: 18, height: 18)
+                case .symbol(let name): Image(systemName: name).resizable().scaledToFit().fontWeight(.medium).symbolMotion(.bounce)
+                case .brand(let mark): mark.image.resizable().scaledToFit()
                 }
             }
 

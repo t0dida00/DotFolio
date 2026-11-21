@@ -109,7 +109,7 @@ private struct TransferGraphic: View {
     var body: some View {
         HStack(spacing: DS.Space.s) {
             TintedIcon(tint: DS.Palette.violet, size: 52) {
-                BrandMark.github.image.resizable().scaledToFit().frame(width: 26, height: 26)
+                BrandMark.github.image.resizable().scaledToFit()
             }
 
             TimelineView(.animation(minimumInterval: 0.25)) { context in
@@ -152,7 +152,7 @@ private struct StatTile: View {
         HStack(spacing: DS.Space.m) {
             TintedIcon(tint: tint, size: 34) {
                 Image(systemName: symbol)
-                    .font(.system(size: 16, weight: .medium))
+                    .resizable().scaledToFit().fontWeight(.medium)
                     // Bounces each time the count goes up during an import.
                     .symbolMotion(.bounce, value: value)
             }

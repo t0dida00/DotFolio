@@ -812,21 +812,9 @@ struct ProjectTile: View {
         self.size = size
     }
 
-    /// Same proportions as AppMark: ~22.5% corners and a glyph that fills
-    /// about 60% of the tile (soft tint background, same-hue glyph).
-    private enum Ratio {
-        static let corner: CGFloat = 0.225
-        static let glyph: CGFloat = 0.6
-    }
-
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: size * Ratio.corner, style: .continuous)
-        glyph
-            .frame(width: size * Ratio.glyph, height: size * Ratio.glyph)
-            .foregroundStyle(tint)
-            .frame(width: size, height: size)
-            .background(tint.opacity(0.14), in: shape)
-            .overlay(shape.strokeBorder(tint.opacity(0.18), lineWidth: 1))
+        // The app's icon style (TintedIcon: logo proportions).
+        TintedIcon(tint: tint, size: size) { glyph }
             .help(helpText)
             .accessibilityLabel(helpText)
     }
