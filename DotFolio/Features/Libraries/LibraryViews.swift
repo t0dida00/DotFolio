@@ -98,6 +98,8 @@ struct LibraryView: View {
     let focusRequest: Int
     /// The left column's filter: "all", "library" or an environment name.
     let scope: String
+    /// Keys exist on the left, but the provider picked there isn't shown.
+    var nothingSelected = false
 
     @Environment(\.modelContext) private var context
     @Environment(AppNavigation.self) private var navigation
@@ -118,41 +120,56 @@ struct LibraryView: View {
         return text
     }
 
+    private var header: some View {
+        HStack(alignment: .top, spacing: DS.Space.m) {
+            VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                Text("Library").font(DS.Font.pageTitle)
+                Text(total == 0
+                     ? "Keys you reuse across projects — a personal OpenAI key, a Stripe test key. Not tied to any project."
+                     : librarySummary)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button {
+                open(EnvFilePicker.choose(message: "Choose .env files. A comment like #Service/Provider/Account/Link after a value says where the key belongs; keys without a provider go to Other."))
+            } label: {
+                Label("Import .env…", systemImage: "square.and.arrow.down")
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .symbolMotion(.bounceDown)
+            .clickableCursor()
+            .help("Add the keys of .env files to the Library — or drop the files here")
+        }
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if nothingSelected {
+            ContentUnavailableView("No keys", systemImage: "hand.tap",
+                                   description: Text("No key is selected yet. Pick All keys or a provider on the left."))
+        } else if scope != "all" {
+            ContentUnavailableView("No keys here", systemImage: "line.3.horizontal.decrease.circle",
+                                   description: Text(scope == "library"
+                                                     ? "The Library has no keys of its own yet."
+                                                     : "No project has variables in \(scope)."))
+        } else {
+            ContentUnavailableView.search
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
+            if groups.isEmpty, total > 0 || scope != "all" || nothingSelected {
+                // Nothing to list: the message sits in the middle of the body.
+                header
+                    .padding([.horizontal, .top], DS.Space.xl)
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.Space.l) {
-                    HStack(alignment: .top, spacing: DS.Space.m) {
-                        VStack(alignment: .leading, spacing: DS.Space.xxs) {
-                            Text("Library").font(DS.Font.pageTitle)
-                            Text(total == 0
-                                 ? "Keys you reuse across projects — a personal OpenAI key, a Stripe test key. Not tied to any project."
-                                 : librarySummary)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button {
-                            open(EnvFilePicker.choose(message: "Choose .env files. A comment like #Service/Provider/Account/Link after a value says where the key belongs; keys without a provider go to Other."))
-                        } label: {
-                            Label("Import .env…", systemImage: "square.and.arrow.down")
-                        }
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.capsule)
-                        .symbolMotion(.bounceDown)
-                        .clickableCursor()
-                        .help("Add the keys of .env files to the Library — or drop the files here")
-                    }
-
-                    if groups.isEmpty {
-                        if scope != "all" {
-                            ContentUnavailableView("No keys here", systemImage: "line.3.horizontal.decrease.circle",
-                                                   description: Text(scope == "library"
-                                                                     ? "The Library has no keys of its own yet."
-                                                                     : "No project has variables in \(scope)."))
-                        } else if total > 0 {
-                            ContentUnavailableView.search
-                        }
-                    }
+                    header
 
                     VStack(spacing: DS.Space.s) {
                         ForEach(groups) { group in
@@ -178,6 +195,7 @@ struct LibraryView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .scrollBounceBehavior(.basedOnSize)
+            }
 
             AddVariableCard(target: .library, nameFocused: $addNameFocused, onDropFiles: { open($0) })
                 .padding(.horizontal, DS.Space.xl)
