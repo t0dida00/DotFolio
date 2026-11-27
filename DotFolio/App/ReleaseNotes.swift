@@ -7,6 +7,14 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "2.4.0", highlights: [
+            ("arrow.triangle.branch", "GitLab",
+             "Import projects from gitlab.com or your company's own GitLab. Sign in with a personal access token that can only read (read_api) — it's kept in your Keychain — and pick the projects to add, nested groups included."),
+            ("square.and.arrow.down", "One place for repo hosts",
+             "Connect Repositories… at the bottom of the project list shows GitHub and GitLab together. Once you're signed in it becomes Import Repositories…, with each account and its sign-out above it."),
+            ("chart.bar", "Simpler uptime",
+             "The Overview's uptime rows read like ● Up · 93 ms: the status dot sits next to its word, and only a site that's down shows how long it's been down."),
+        ]),
         Entry(version: "2.3.0", highlights: [
             ("globe", "Is the live site up?",
              "Give a project its Production URL (✎, or when you create it) and its address shows under the name with a status: Up, Slow (over 3 s) or Down, with the reason. Click the status for details and Check Now."),
