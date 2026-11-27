@@ -173,25 +173,34 @@ extension View {
 /// Shared chip look: same font, height, padding and capsule for every chip.
 struct ChipStyle: ViewModifier {
     var dashed = false
+    /// The chosen chip of a filter row: accent (violet) fill, white text.
+    var selected = false
+
+    private var fill: AnyShapeStyle {
+        if selected { return AnyShapeStyle(Color.accentColor) }
+        return dashed ? AnyShapeStyle(.clear) : AnyShapeStyle(.quaternary.opacity(DS.Fill.tile))
+    }
 
     func body(content: Content) -> some View {
         content
             .font(.callout)
             .padding(.horizontal, DS.Space.m)
             .frame(height: 26)
-            .background(dashed ? AnyShapeStyle(.clear) : AnyShapeStyle(.quaternary.opacity(DS.Fill.tile)), in: Capsule())
+            .background(fill, in: Capsule())
             .overlay {
                 if dashed {
                     Capsule().strokeBorder(.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
                 }
             }
-            .foregroundStyle(dashed ? .secondary : .primary)
+            .foregroundStyle(selected ? AnyShapeStyle(.white) : dashed ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
             .contentShape(Capsule())
     }
 }
 
 extension View {
-    func chip(dashed: Bool = false) -> some View { modifier(ChipStyle(dashed: dashed)) }
+    func chip(dashed: Bool = false, selected: Bool = false) -> some View {
+        modifier(ChipStyle(dashed: dashed, selected: selected))
+    }
 }
 
 // MARK: - Links

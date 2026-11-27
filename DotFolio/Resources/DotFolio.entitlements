@@ -5,7 +5,8 @@
 	<!-- SECURITY: sandboxed. Filesystem access only to folders the user picks. -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
-	<!-- Outgoing HTTPS only: GitHub/GitLab APIs (read-only). No incoming connections. -->
+	<!-- Outgoing HTTPS only: GitHub/GitLab APIs (read-only) and HEAD/GET uptime checks of each
+	     project's production URL (no cookies, no credentials). No incoming connections. -->
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<!-- Writing exported .env files into the project folder the user selected. -->

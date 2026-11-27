@@ -31,6 +31,7 @@ struct DataEraserTests {
     @Test func erasesSecretsAndAllMetadata() throws {
         let (context, secrets) = try seeded()
         #expect(secrets.itemCount == 1)
+        NotificationFeed.post(.siteDown, title: "Shop is down", body: "", projectID: nil, context: context)
 
         try DataEraser.eraseAll(context: context, secretStores: [secrets])
 
@@ -39,6 +40,7 @@ struct DataEraserTests {
         #expect(try context.fetchCount(FetchDescriptor<ProjectEnvironment>()) == 0)
         #expect(try context.fetchCount(FetchDescriptor<Variable>()) == 0)
         #expect(try context.fetchCount(FetchDescriptor<Account>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<AppNotification>()) == 0)
     }
 
     @Test func keychainFailureKeepsDatabase() throws {

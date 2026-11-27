@@ -20,15 +20,19 @@ struct ProjectListRow: View {
                     .truncationMode(.middle)
             }
             Spacer(minLength: DS.Space.s)
-            if let opened = project.lastOpenedAt {
-                // Compact age (1m, 5h, 1d…), refreshed every 15 minutes.
-                TimelineView(.periodic(from: .now, by: CompactAge.refreshInterval)) { context in
-                    Text(CompactAge.string(since: opened, now: context.date))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.tertiary)
+            // Production status dot above the age, both right-aligned.
+            VStack(alignment: .trailing, spacing: DS.Space.xs) {
+                HealthDot(project: project)
+                if let opened = project.lastOpenedAt {
+                    // Compact age (1m, 5h, 1d…), refreshed every 15 minutes.
+                    TimelineView(.periodic(from: .now, by: CompactAge.refreshInterval)) { context in
+                        Text(CompactAge.string(since: opened, now: context.date))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.tertiary)
+                    }
+                    .help("Last opened \(opened.formatted(date: .abbreviated, time: .shortened))")
+                    .accessibilityLabel("Last opened \(opened.formatted(.relative(presentation: .named)))")
                 }
-                .help("Last opened \(opened.formatted(date: .abbreviated, time: .shortened))")
-                .accessibilityLabel("Last opened \(opened.formatted(.relative(presentation: .named)))")
             }
         }
         .padding(.vertical, DS.Space.xs)
@@ -56,6 +60,30 @@ struct ProjectListRow: View {
             } else {
                 project.repoFullName.isEmpty ? "No repo" : project.repoFullName
             }
+        }
+    }
+}
+
+/// Production status as a plain dot (only with a production URL): green up,
+/// yellow slow, red down, gray not checked yet. The words are in the tooltip, the
+/// accessibility label and the project header's chip.
+private struct HealthDot: View {
+    let project: Project
+
+    var body: some View {
+        if let site = project.productionDisplayName {
+            let time = project.healthResponseTime.map(HealthText.responseTime) ?? "?"
+            let words = switch project.health {
+            case .up: "\(site) is up"
+            case .slow: "\(site) is slow: \(time)"
+            case .down: "\(site) is down: \(project.healthError ?? "No response")"
+            case .unknown: "\(site) hasn’t been checked yet"
+            }
+            Circle()
+                .fill(project.health.color)
+                .frame(width: 8, height: 8)
+                .help(words)
+                .accessibilityLabel(words)
         }
     }
 }

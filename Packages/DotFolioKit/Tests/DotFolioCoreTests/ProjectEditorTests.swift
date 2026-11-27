@@ -44,3 +44,40 @@ struct ProjectEditorTests {
         #expect(p.name == "Shop")
     }
 }
+
+@MainActor
+struct ProjectEditorProductionTests {
+    let context: ModelContext
+    init() throws { context = ModelContext(try DotFolioSchema.makeContainer(inMemory: true)) }
+
+    @Test func setsChangesAndRemovesProductionURL() throws {
+        let p = Project.create(name: "Shop", in: context)
+        try ProjectEditor.update(p, name: "Shop", summary: "", link: "", production: " shop.example.com ")
+        #expect(p.productionURL?.absoluteString == "https://shop.example.com")
+        p.recordHealth(HealthResult(statusCode: 503, responseTime: 0.1, error: nil))
+        try ProjectEditor.update(p, name: "Shop", summary: "", link: "", production: "https://shop.example.com")
+        #expect(p.health == .down, "same address keeps the last check")
+        try ProjectEditor.update(p, name: "Shop", summary: "", link: "", production: "https://shop.example.org")
+        #expect(p.health == .unknown, "new address forgets it")
+        try ProjectEditor.update(p, name: "Shop", summary: "", link: "", production: "")
+        #expect(p.productionURL == nil)
+    }
+
+    @Test func nilLeavesProductionAlone() throws {
+        let p = Project.create(name: "Shop", in: context)
+        p.productionURL = URL(string: "https://shop.example.com")
+        try ProjectEditor.update(p, name: "Shop 2", summary: "", link: "")
+        #expect(p.productionURL != nil)
+    }
+
+    @Test func refusesPlainHttpAndJunk() {
+        let p = Project.create(name: "Shop", in: context)
+        #expect(throws: ProjectEditor.Failure.insecureProductionURL) {
+            try ProjectEditor.update(p, name: "Shop", summary: "", link: "", production: "http://shop.example.com")
+        }
+        #expect(throws: ProjectEditor.Failure.invalidProductionURL) {
+            try ProjectEditor.update(p, name: "Shop", summary: "", link: "", production: "not a site")
+        }
+        #expect(p.productionURL == nil)
+    }
+}

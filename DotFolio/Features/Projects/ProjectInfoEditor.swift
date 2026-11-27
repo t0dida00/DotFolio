@@ -7,10 +7,12 @@ struct ProjectInfoEditor: View {
     let project: Project
     let onDone: () -> Void
     @Environment(AppNavigation.self) private var navigation
+    @Environment(HealthMonitor.self) private var monitor
 
     @State private var name: String
     @State private var summary: String
     @State private var link: String
+    @State private var production: String
     @State private var error: String?
     @State private var folderPath: String?
     @FocusState private var nameFocused: Bool
@@ -21,6 +23,17 @@ struct ProjectInfoEditor: View {
         _name = State(initialValue: project.name)
         _summary = State(initialValue: project.summary)
         _link = State(initialValue: project.repoURL?.absoluteString ?? "")
+        _production = State(initialValue: project.productionURL?.absoluteString ?? "")
+    }
+
+    /// The production field's problem, if any.
+    private var productionFailure: ProjectEditor.Failure? {
+        do { _ = try ProjectEditor.productionURL(production); return nil } catch { return error }
+    }
+
+    private var productionHint: String {
+        if let productionFailure { return productionFailure.message }
+        return "The live site. DOTFOLIO checks it every 10 minutes and notifies you when it goes down."
     }
 
     private var linkIsInvalid: Bool {
@@ -62,6 +75,11 @@ struct ProjectInfoEditor: View {
                         .fieldHint(linkHint, isError: linkIsInvalid)
                 }
                 GridRow {
+                    label("Production URL", optional: true)
+                    TextField("", text: $production)
+                        .fieldHint(productionHint, isError: productionFailure != nil)
+                }
+                GridRow {
                     label("Local folder")
                     HStack(spacing: DS.Space.s) {
                         Text(folderPath ?? "Not set")
@@ -96,7 +114,7 @@ struct ProjectInfoEditor: View {
                 Button("Save", action: save)
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || productionFailure != nil)
             }
             .controlSize(.large)
             .buttonBorderShape(.capsule)
@@ -122,7 +140,12 @@ struct ProjectInfoEditor: View {
 
     private func save() {
         do {
-            try ProjectEditor.update(project, name: name, summary: summary, link: link)
+            let previousProduction = project.productionURL
+            try ProjectEditor.update(project, name: name, summary: summary, link: link, production: production)
+            if project.productionURL != previousProduction, project.productionURL != nil {
+                monitor.requestNotificationPermission()
+                Task { await monitor.check(project) }
+            }
             onDone()
             navigation.show(.success("Project saved", "“\(project.name)” was updated."))
         } catch {

@@ -6,10 +6,12 @@ import SwiftUI
 @main
 struct DotFolioApp: App {
     private let container: ModelContainer
-    @State private var navigation = AppNavigation()
+    @State private var navigation: AppNavigation
     @State private var session = SessionLock()
     @State private var updates = UpdateCenter()
     @State private var autoLock: SessionAutoLock?
+    /// Production uptime checks; runs from launch, window open or not.
+    @State private var health: HealthMonitor
     /// "Show in Menu Bar" (DOTFOLIO menu); not a secret.
     @AppStorage("menuBarExtra") private var showsMenuBarExtra = true
 
@@ -21,6 +23,11 @@ struct DotFolioApp: App {
             // (an empty store would look like data loss to the user).
             fatalError("Could not open the DOTFOLIO database: \(error)")
         }
+        let navigation = AppNavigation()
+        _navigation = State(initialValue: navigation)
+        let health = HealthMonitor(container: container, navigation: navigation)
+        health.start()
+        _health = State(initialValue: health)
     }
 
     var body: some Scene {
@@ -30,7 +37,9 @@ struct DotFolioApp: App {
                 .environment(navigation)
                 .environment(session)
                 .environment(updates)
+                .environment(health)
                 .task { await runAutoLock() }
+                .modifier(OpensMainWindow(health: health))
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1280, height: 820)
@@ -68,8 +77,10 @@ struct DotFolioApp: App {
     /// window. Same database, Keychain and Touch ID session as the window.
     @SceneBuilder
     private var menuBarExtra: some Scene {
-        MenuBarExtra("DOTFOLIO", systemImage: "lock.doc", isInserted: $showsMenuBarExtra) {
+        MenuBarExtra(isInserted: $showsMenuBarExtra) {
             MenuBarPanel()
+                .environment(health)
+                .modifier(OpensMainWindow(health: health))
                 .environment(navigation)
                 .environment(session)
                 .environment(updates)
@@ -77,6 +88,9 @@ struct DotFolioApp: App {
                 .environment(\.secretStore, KeychainStore.secrets(bundleID: Self.bundleID))
                 // Keeps the session's auto-lock running even with the main window closed.
                 .task { await runAutoLock() }
+        } label: {
+            // A site down shows in the menu bar too, with its own symbol.
+            Label("DOTFOLIO", systemImage: health.downProjects.isEmpty ? "lock.doc" : "exclamationmark.triangle.fill")
         }
         .menuBarExtraStyle(.window)
     }
@@ -92,4 +106,15 @@ struct DotFolioApp: App {
     }
 
     static var bundleID: String { Bundle.main.bundleIdentifier ?? "app.dotfolio.DotFolio" }
+}
+
+/// Hands the scene's `openWindow` to the health monitor, so a notification
+/// clicked with the window closed can open it again.
+private struct OpensMainWindow: ViewModifier {
+    let health: HealthMonitor
+    @Environment(\.openWindow) private var openWindow
+
+    func body(content: Content) -> some View {
+        content.onAppear { health.openMainWindow = { openWindow(id: "main") } }
+    }
 }

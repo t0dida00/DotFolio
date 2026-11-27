@@ -35,6 +35,8 @@ public struct ProjectDraft {
     public var name = ""
     public var summary = ""
     public var link = ""
+    /// The live site, checked for uptime (see `ProjectEditor.productionURL`).
+    public var production = ""
     /// The environment whose rows the table shows and edits.
     public var environmentName = "development"
     public var rowsByEnvironment: [String: [EnvDraftRow]] = [:]
@@ -93,8 +95,13 @@ public struct ProjectDraft {
         InputValidation.duplicateKeys(filledRows(in: environment).map { $0.key.trimmingCharacters(in: .whitespaces) })
     }
 
+    /// Why the production address can't be used, nil when fine or empty.
+    public var productionIssue: ProjectEditor.Failure? {
+        do { _ = try ProjectEditor.productionURL(production); return nil } catch { return error }
+    }
+
     public var canCreate: Bool {
-        !trimmedName.isEmpty && !linkIsInvalid
+        !trimmedName.isEmpty && !linkIsInvalid && productionIssue == nil
             && environmentsWithRows.allSatisfy { env in
                 filledRows(in: env).allSatisfy { keyIssue(for: $0, in: env) == nil && linkIssue(for: $0) == nil }
             }
@@ -187,6 +194,7 @@ public enum ProjectCreator {
             link: InputValidation.webURL(draft.link),
             in: context
         )
+        project.productionURL = try? ProjectEditor.productionURL(draft.production)
         let history = SourceHistory(context: context)
         for table in tables {
             let environment = project.sortedEnvironments.first { $0.name == table.environment }

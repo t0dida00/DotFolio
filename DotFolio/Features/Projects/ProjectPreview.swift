@@ -83,6 +83,7 @@ struct ProjectPreview: View {
                     .font(DS.Font.pageTitle)
                     .lineLimit(2)
                     .textSelection(.enabled)
+                ProductionStatusLine(project: project)
                 if !project.summary.isEmpty {
                     Text(project.summary)
                         .foregroundStyle(.secondary)
