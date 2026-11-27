@@ -121,7 +121,7 @@ private struct HealthDetails: View {
                 }
             }
             Text(monitor.isOnline
-                 ? "Checked every 10 minutes while DOTFOLIO is open (also from the menu bar). You get a notification when the site goes down or comes back."
+                 ? "Checked every 10 minutes while Dotfolio is open (also from the menu bar). You get a notification when the site goes down or comes back."
                  : "This Mac is offline, so checks are paused and the last result is kept. They resume as soon as the network is back.")
                 .font(.caption)
                 .foregroundStyle(.secondary)

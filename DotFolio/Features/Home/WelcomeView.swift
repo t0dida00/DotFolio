@@ -13,7 +13,7 @@ struct WelcomeView: View {
                 VStack(spacing: DS.Space.s) {
                     AppMark(size: 96)
                         .padding(.bottom, DS.Space.m)
-                    Text("Welcome to DOTFOLIO")
+                    Text("Welcome to Dotfolio")
                         .font(.largeTitle.weight(.bold))
                     Text("Keep every project’s secrets in your Keychain — and remember where each one came from.")
                         .font(.title3)

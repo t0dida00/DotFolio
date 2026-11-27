@@ -67,7 +67,7 @@ struct FolderImportSheet: View {
                             .frame(maxWidth: 360)
                     }
                         .fieldHint(name.trimmingCharacters(in: .whitespaces).isEmpty
-                                   ? "A name is required." : "The project’s name in DOTFOLIO.",
+                                   ? "A name is required." : "The project’s name in Dotfolio.",
                                    isError: name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 

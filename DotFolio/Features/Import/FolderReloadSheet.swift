@@ -72,7 +72,7 @@ struct FolderReloadSheet: View {
                     .scrollBounceBehavior(.basedOnSize)
                 }
                 if !result.ignored.isEmpty {
-                    Text("Not used: \(result.ignored.joined(separator: ", ")) (examples, or a name DOTFOLIO can't match to an environment).")
+                    Text("Not used: \(result.ignored.joined(separator: ", ")) (examples, or a name Dotfolio can't match to an environment).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

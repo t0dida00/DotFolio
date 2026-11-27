@@ -163,7 +163,7 @@ struct GitLabHostStep: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.l) {
             StepHeader(title: isSelfHosted ? "Sign in to your GitLab" : "Sign in to GitLab",
-                       subtitle: "DOTFOLIO reads your projects’ .env.example with a read-only token. It never writes to GitLab.")
+                       subtitle: "Dotfolio reads your projects’ .env.example with a read-only token. It never writes to GitLab.")
 
             VStack(alignment: .leading, spacing: DS.Space.xs) {
                 Text.fieldTitle("GitLab address", required: true).font(.callout.weight(.medium))

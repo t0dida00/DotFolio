@@ -15,7 +15,7 @@ struct RepoPickerStep: View {
             HStack(alignment: .firstTextBaseline) {
                 StepHeader(
                     title: "Import repositories",
-                    subtitle: "\(model.account.map { "Signed in as @\($0.login) · " } ?? "")\(model.repos.count) repositories DOTFOLIO can read"
+                    subtitle: "\(model.account.map { "Signed in as @\($0.login) · " } ?? "")\(model.repos.count) repositories Dotfolio can read"
                 )
                 Spacer()
                 Button("Refresh", systemImage: "arrow.clockwise", action: model.refreshRepos)
@@ -89,7 +89,7 @@ struct RepoPickerStep: View {
     private var installHint: some View {
         HStack(spacing: DS.Space.s) {
             Image(systemName: "info.circle").foregroundStyle(.secondary)
-            Text("Missing a repo? DOTFOLIO only sees repos where its GitHub App is installed.")
+            Text("Missing a repo? Dotfolio only sees repos where its GitHub App is installed.")
                 .foregroundStyle(.secondary)
             if let url = GitHubConfig.installURL {
                 Link("Manage access", destination: url).clickableCursor()
@@ -102,7 +102,7 @@ struct RepoPickerStep: View {
         VStack(alignment: .leading, spacing: DS.Space.s) {
             Text("No repositories yet").font(DS.Font.sectionTitle)
             Text(model.host == .github
-                 ? "Install DOTFOLIO’s GitHub App on your account or organization and choose which repos it can read, then refresh."
+                 ? "Install Dotfolio’s GitHub App on your account or organization and choose which repos it can read, then refresh."
                  : "This account isn’t a member of any project on \(model.host.name) yet. Join one, then refresh.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

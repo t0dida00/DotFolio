@@ -7,7 +7,7 @@ import SwiftData
 import SwiftUI
 import UserNotifications
 
-/// Checks every project's production URL every 10 minutes while DOTFOLIO
+/// Checks every project's production URL every 10 minutes while Dotfolio
 /// runs (the menu bar extra keeps it running with the window closed), once
 /// more when the Mac wakes, and on Check Now. A site that changes state
 /// (down, back up) posts a notification; clicking it opens the project.
@@ -221,7 +221,7 @@ final class HealthMonitor {
     }
 }
 
-/// Shows banners while DOTFOLIO is in front, and opens the project on click.
+/// Shows banners while Dotfolio is in front, and opens the project on click.
 private final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
     @MainActor var onOpen: ((UUID) -> Void)?
 

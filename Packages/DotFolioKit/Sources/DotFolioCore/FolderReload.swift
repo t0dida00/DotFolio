@@ -10,7 +10,7 @@ import SwiftData
 ///
 /// Files map to environments by name, like the import (`.env.production` →
 /// production; `.env` and `.env.local` → development). Example files and
-/// names DOTFOLIO can't place are listed as ignored. An environment with no
+/// names Dotfolio can't place are listed as ignored. An environment with no
 /// file is left alone.
 public enum FolderReload {
     /// One `.env*` file read from the folder.

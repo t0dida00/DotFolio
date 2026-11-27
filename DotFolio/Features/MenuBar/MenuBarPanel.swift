@@ -98,7 +98,7 @@ struct MenuBarPanel: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("Open DOTFOLIO") { openMainWindow() }
+                Button("Open Dotfolio") { openMainWindow() }
                     .controlSize(.small)
                     .buttonBorderShape(.capsule)
                     .clickableCursor()
@@ -177,7 +177,7 @@ private struct MenuBarRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .help(isVariable ? "Copy the value (⌥: copy the .env line)" : "Open in DOTFOLIO")
+        .help(isVariable ? "Copy the value (⌥: copy the .env line)" : "Open in Dotfolio")
         .clickableCursor()
     }
 

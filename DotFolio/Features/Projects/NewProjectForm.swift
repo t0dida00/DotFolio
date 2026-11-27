@@ -108,7 +108,7 @@ struct NewProjectForm: View {
                 TextField("", text: $draft.production)
                     .textFieldStyle(.roundedBorder)
                     .fieldHint(draft.productionIssue?.message
-                               ?? "The live site. DOTFOLIO checks it every 10 minutes and notifies you when it goes down.",
+                               ?? "The live site. Dotfolio checks it every 10 minutes and notifies you when it goes down.",
                                isError: draft.productionIssue != nil)
             }
         }

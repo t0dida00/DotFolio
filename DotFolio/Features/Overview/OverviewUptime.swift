@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Overview card: how many production sites are up, slow or down, and how
 /// long a site has been down. That duration counts from the first failed check,
-/// so it only covers the time DOTFOLIO was running.
+/// so it only covers the time Dotfolio was running.
 struct UptimeCard: View {
     let summary: UptimeSummary
     let onOpen: (Project) -> Void
@@ -36,7 +36,7 @@ struct UptimeCard: View {
 
     private var subtitle: String {
         monitor.isOnline
-            ? "Checked every 10 minutes while DOTFOLIO is open"
+            ? "Checked every 10 minutes while Dotfolio is open"
             : "This Mac is offline: showing the last results"
     }
 
