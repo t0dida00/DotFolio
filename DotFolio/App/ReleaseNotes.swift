@@ -7,6 +7,10 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "2.4.1", highlights: [
+            ("textformat", "Now called Dotfolio",
+             "The app's name is written Dotfolio everywhere: the Dock, menus, the menu bar and notifications. Your projects, Keychain values and settings carry over unchanged. Installing by hand? Delete the old DOTFOLIO app first, then copy Dotfolio into Applications."),
+        ]),
         Entry(version: "2.4.0", highlights: [
             ("arrow.triangle.branch", "GitLab",
              "Import projects from gitlab.com or your company's own GitLab. Sign in with a personal access token that can only read (read_api) — it's kept in your Keychain — and pick the projects to add, nested groups included."),
