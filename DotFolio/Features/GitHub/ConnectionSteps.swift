@@ -119,7 +119,7 @@ struct FailedStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.l) {
-            StepHeader(title: failure == .notConfigured ? "GitHub sign-in needs setup" : "GitHub isn’t connected yet", subtitle: nil)
+            StepHeader(title: failure == .notConfigured ? "GitHub sign-in needs setup" : "\(model.host.name) isn’t connected yet", subtitle: nil)
 
             HStack(alignment: .firstTextBaseline, spacing: DS.Space.s) {
                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(DS.Status.danger)
@@ -146,16 +146,24 @@ struct FailedStep: View {
     }
 }
 
+/// GitLab sign-in: the instance's address and a personal access token with
+/// the read-only `read_api` scope. gitlab.com is filled in; self-hosted
+/// starts empty.
 struct GitLabHostStep: View {
     @Bindable var model: ConnectionFlowModel
-    @FocusState private var focused: Bool
+    @FocusState private var focus: Field?
 
-    private var isValid: Bool { ConnectionFlowModel.validatedGitLabHost(model.gitLabHost) != nil }
-    private var showsError: Bool { !model.gitLabHost.isEmpty && !isValid }
+    private enum Field { case host, token }
+
+    private var hostURL: URL? { ConnectionFlowModel.validatedGitLabHost(model.gitLabHost) }
+    private var showsHostError: Bool { !model.gitLabHost.isEmpty && hostURL == nil }
+    private var hasToken: Bool { !model.gitLabToken.trimmingCharacters(in: .whitespaces).isEmpty }
+    private var isSelfHosted: Bool { hostURL.map { $0.host() != GitLabClient.gitLabCom.host() } ?? true }
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.l) {
-            StepHeader(title: "Self-hosted GitLab", subtitle: "Enter the address of your company’s or client’s GitLab.")
+            StepHeader(title: isSelfHosted ? "Sign in to your GitLab" : "Sign in to GitLab",
+                       subtitle: "DOTFOLIO reads your projects’ .env.example with a read-only token. It never writes to GitLab.")
 
             VStack(alignment: .leading, spacing: DS.Space.xs) {
                 Text.fieldTitle("GitLab address", required: true).font(.callout.weight(.medium))
@@ -163,21 +171,39 @@ struct GitLabHostStep: View {
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)
                     .frame(maxWidth: 360)
-                    .focused($focused)
-                    .onSubmit(model.connectSelfHostedGitLab)
-                Text(showsError ? "The address must start with https://" : "Only https is supported, so your sign-in code can’t be intercepted.")
-                    .font(.caption)
-                    .foregroundStyle(showsError ? AnyShapeStyle(DS.Status.danger) : AnyShapeStyle(.secondary))
+                    .focused($focus, equals: .host)
+                    .onSubmit { focus = .token }
+                    .fieldHint(showsHostError ? "The address must start with https://"
+                                              : "https://gitlab.com, or your company’s server. Only https is supported.",
+                               isError: showsHostError)
+            }
+
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
+                Text.fieldTitle("Personal access token", required: true).font(.callout.weight(.medium))
+                SecureField("", text: $model.gitLabToken)
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.large)
+                    .frame(maxWidth: 360)
+                    .focused($focus, equals: .token)
+                    .onSubmit(model.signInToGitLab)
+                    .fieldHint("Create one with only the read_api scope. It’s kept in your Keychain.")
+                if let hostURL {
+                    Link(destination: GitLabClient.tokenPage(for: hostURL)) {
+                        Label("Create a token on \(hostURL.host() ?? "GitLab")", systemImage: "arrow.up.forward.square")
+                    }
+                    .font(.callout)
+                    .clickableCursor()
+                }
             }
 
             HStack(spacing: DS.Space.s) {
-                Button(action: model.connectSelfHostedGitLab) {
-                    Label { Text("Continue") } icon: { BrandMark.gitlab.image }
+                Button(action: model.signInToGitLab) {
+                    Label { Text("Sign In") } icon: { BrandMark.gitlab.image }
                 }
                 .buttonStyle(.borderedProminent)
                 .clickableCursor()
                 .keyboardShortcut(.defaultAction)
-                .disabled(!isValid)
+                .disabled(hostURL == nil || !hasToken)
                 Button("Back", action: model.cancel)
                     .buttonStyle(.bordered)
                     .clickableCursor()
@@ -186,7 +212,7 @@ struct GitLabHostStep: View {
             .controlSize(.large)
             .buttonBorderShape(.capsule)
         }
-        .onAppear { focused = true }
+        .onAppear { focus = model.gitLabHost.isEmpty ? .host : .token }
     }
 }
 

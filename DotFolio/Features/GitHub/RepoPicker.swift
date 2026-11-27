@@ -3,7 +3,8 @@ import DotFolioIntegrations
 import DotFolioModels
 import SwiftUI
 
-/// Lists every repo the GitHub App can read; pick some to import as projects.
+/// Lists every repo the signed-in account can read (GitHub App installs, or
+/// GitLab projects you're a member of); pick some to import as projects.
 struct RepoPickerStep: View {
     @Bindable var model: ConnectionFlowModel
 
@@ -21,7 +22,7 @@ struct RepoPickerStep: View {
                     .labelStyle(.iconOnly)
                     .symbolMotion(.rotate)
                     .buttonStyle(.borderless)
-                    .help("Reload the list from GitHub")
+                    .help("Reload the list from \(model.host.name)")
                     .clickableCursor()
             }
 
@@ -57,11 +58,11 @@ struct RepoPickerStep: View {
                 .listStyle(.bordered(alternatesRowBackgrounds: true))
                 .frame(minHeight: 260, maxHeight: 420)
 
-                installHint
+                if model.host == .github { installHint }
             }
 
             HStack {
-                Button("Sign Out of GitHub…", action: model.requestSignOutGitHub)
+                Button("Sign Out of \(model.host.name)…", action: model.requestSignOut)
                     .buttonStyle(.link)
                     .clickableCursor()
                 Spacer()
@@ -100,10 +101,12 @@ struct RepoPickerStep: View {
     private var noRepos: some View {
         VStack(alignment: .leading, spacing: DS.Space.s) {
             Text("No repositories yet").font(DS.Font.sectionTitle)
-            Text("Install DOTFOLIO’s GitHub App on your account or organization and choose which repos it can read, then refresh.")
+            Text(model.host == .github
+                 ? "Install DOTFOLIO’s GitHub App on your account or organization and choose which repos it can read, then refresh."
+                 : "This account isn’t a member of any project on \(model.host.name) yet. Join one, then refresh.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if let url = GitHubConfig.installURL {
+            if model.host == .github, let url = GitHubConfig.installURL {
                 Link(destination: url) { Label("Install on GitHub", systemImage: "arrow.up.forward.square") }
                     .clickableCursor()
                     .symbolMotion(.bounceUp)
