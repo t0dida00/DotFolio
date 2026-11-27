@@ -9,8 +9,9 @@ import SwiftData
 
 // Size note: One state machine for sign-in and repo import (steps share the client, token and progress), so it stays in one file even though it is over ~350 lines.
 
-/// "Connect your repo host" flow: GitHub device-flow sign-in, picking repos,
-/// and importing them as projects.
+/// "Connect your repo host" flow: GitHub device-flow sign-in or GitLab
+/// (gitlab.com / self-hosted) personal access token, picking repos, and
+/// importing them as projects. One host at a time: `host`.
 @Observable
 @MainActor
 final class ConnectionFlowModel {
@@ -24,6 +25,23 @@ final class ConnectionFlowModel {
         case importing(done: Int, total: Int)
         case importFinished(ImportSummary)
         case failed(Failure)
+    }
+
+    /// The repo host the flow is talking to.
+    enum Host: Equatable {
+        case github
+        case gitlab(URL)
+
+        var provider: RepoProvider { self == .github ? .github : .gitlab }
+        var name: String {
+            switch self {
+            case .github: "GitHub"
+            case .gitlab(let url): url.host() == GitLabClient.gitLabCom.host() ? "GitLab" : (url.host() ?? "GitLab")
+            }
+        }
+        var brand: BrandMark { self == .github ? .github : .gitlab }
+        var tokenRef: String { self == .github ? "github" : "gitlab" }
+        var userKey: String { self == .github ? RepoConnections.gitHubUserKey : RepoConnections.gitLabUserKey }
     }
 
     /// One line of the import log.
@@ -72,8 +90,8 @@ final class ConnectionFlowModel {
             case .notConfigured: "GitHub sign-in isn’t set up yet."
             case .codeExpired: "The code expired."
             case .accessDenied: "Access was denied."
-            case .signedOut: "Your GitHub session ended."
-            case .network: "Couldn’t reach GitHub."
+            case .signedOut: "Your session ended."
+            case .network: "Couldn’t reach the server."
             case .other: "Something went wrong."
             }
         }
@@ -99,7 +117,11 @@ final class ConnectionFlowModel {
     }
 
     var step: Step
+    private(set) var host: Host = .github
+    /// GitLab sign-in form. The token is only held until it's saved to the
+    /// Keychain, then cleared.
     var gitLabHost = ""
+    var gitLabToken = ""
 
     // Repo picker state
     private(set) var account: GitHubUser?
@@ -114,6 +136,9 @@ final class ConnectionFlowModel {
     private static let parallelImports = 4
 
     private let client = GitHubClient(clientID: GitHubConfig.clientID)
+    private var gitLabClient: GitLabClient? {
+        if case .gitlab(let url) = host { GitLabClient(baseURL: url) } else { nil }
+    }
     private var context: ModelContext?
     private var tokens: (any SecretStore)?
     private var secrets: (any SecretStore)?
@@ -121,13 +146,13 @@ final class ConnectionFlowModel {
     /// What signing out would delete; the root view asks to confirm.
     struct SignOutPlan: Identifiable {
         let id = UUID()
+        let host: Host
         let login: String
         let projects: [Project]
     }
     var pendingSignOut: SignOutPlan?
     private(set) var isPreparingSignOut = false
     private var task: Task<Void, Never>?
-    private static let tokenRef = "github"
     /// Shows a result dialog (set by the root view).
     var onReport: ((ResultReport) -> Void)?
 
@@ -154,6 +179,7 @@ final class ConnectionFlowModel {
     /// Signed in already → straight to the repo picker. Otherwise device flow.
     func connectGitHub() {
         task?.cancel()
+        host = .github
         task = Task { await runGitHubFlow() }
     }
 
@@ -165,7 +191,7 @@ final class ConnectionFlowModel {
                     step = .choosingRepos
                     return
                 } catch GitHubError.unauthorized {
-                    forgetGitHub() // revoked/expired: fall through to a fresh sign-in
+                    forget() // revoked/expired: fall through to a fresh sign-in
                 }
             }
 
@@ -183,7 +209,7 @@ final class ConnectionFlowModel {
 
             let token = try await client.pollForToken(code)
             // SECURITY: the token lives only in the Keychain.
-            try tokens?.setString(token, for: Self.tokenRef)
+            try tokens?.setString(token, for: host.tokenRef)
             try await loadRepos(token: token)
             if let account {
                 step = .connected(ConnectedAccount(
@@ -203,17 +229,24 @@ final class ConnectionFlowModel {
 
     private func loadRepos(token: String) async throws {
         step = .loading("Loading your repositories…")
-        let user = try await client.currentUser(token: token)
-        let list = try await client.repositories(token: token)
+        let user: GitHubUser
+        let list: [GitHubRepo]
+        if let gitLab = gitLabClient {
+            user = try await gitLab.currentUser(token: token)
+            list = try await gitLab.repositories(token: token)
+        } else {
+            user = try await client.currentUser(token: token)
+            list = try await client.repositories(token: token)
+        }
         account = user
         repos = list
         selectedRepoIDs = []
         repoFilter = ""
-        UserDefaults.standard.set(user.login, forKey: RepoConnections.gitHubUserKey)
+        UserDefaults.standard.set(user.login, forKey: host.userKey)
     }
 
     func refreshRepos() {
-        guard let token = storedToken() else { connectGitHub(); return }
+        guard let token = storedToken() else { retry(); return }
         task?.cancel()
         task = Task {
             do {
@@ -225,21 +258,36 @@ final class ConnectionFlowModel {
         }
     }
 
-    /// Works out which projects belong to the signed-in account (asking
-    /// GitHub for its repo list while the token still works), then asks the
+    /// Works out which projects belong to the signed-in account (asking the
+    /// host for its repo list while the token still works), then asks the
     /// user to confirm before anything is deleted.
-    func requestSignOutGitHub() {
+    func requestSignOutGitHub() { requestSignOut(of: .github) }
+
+    func requestSignOutGitLab() {
+        requestSignOut(of: .gitlab(RepoConnections.gitLabHost ?? GitLabClient.gitLabCom))
+    }
+
+    /// Sign out of the host the picker is showing.
+    func requestSignOut() { requestSignOut(of: host) }
+
+    private func requestSignOut(of target: Host) {
         guard let context, !isPreparingSignOut else { return }
-        let login = account?.login ?? UserDefaults.standard.string(forKey: RepoConnections.gitHubUserKey) ?? ""
+        if target != host { host = target; account = nil; repos = [] }
+        let login = account?.login ?? UserDefaults.standard.string(forKey: target.userKey) ?? ""
         isPreparingSignOut = true
         Task {
             var names = Set(repos.map(\.fullName))
             if names.isEmpty, let token = storedToken() {
-                names = Set(((try? await client.repositories(token: token)) ?? []).map(\.fullName))
+                let list: [GitHubRepo]? = if let gitLab = gitLabClient {
+                    try? await gitLab.repositories(token: token)
+                } else {
+                    try? await client.repositories(token: token)
+                }
+                names = Set((list ?? []).map(\.fullName))
             }
-            let projects = login.isEmpty ? [] : AccountSignOut.projects(provider: .github, login: login, repoFullNames: names, context: context)
+            let projects = login.isEmpty ? [] : AccountSignOut.projects(provider: target.provider, login: login, repoFullNames: names, context: context)
             isPreparingSignOut = false
-            pendingSignOut = SignOutPlan(login: login, projects: projects)
+            pendingSignOut = SignOutPlan(host: target, login: login, projects: projects)
         }
     }
 
@@ -248,6 +296,7 @@ final class ConnectionFlowModel {
         guard let plan = pendingSignOut, let context, let secrets else { return }
         pendingSignOut = nil
         task?.cancel()
+        host = plan.host
         do {
             try AccountSignOut.deleteProjects(plan.projects, context: context, secrets: secrets)
             try context.save()
@@ -255,27 +304,29 @@ final class ConnectionFlowModel {
             // Keep the token too: the account's projects still exist, and the
             // user can retry signing out.
             step = .failed(.other("Some stored values couldn’t be removed from the Keychain, so sign-out stopped. \((error as? KeychainError)?.userMessage ?? error.localizedDescription)"))
-            onReport?(.failed("Couldn’t sign out of GitHub", "Some stored values couldn’t be removed from the Keychain, so sign-out stopped."))
+            onReport?(.failed("Couldn’t sign out of \(plan.host.name)", "Some stored values couldn’t be removed from the Keychain, so sign-out stopped."))
             return
         }
-        forgetGitHub()
+        forget()
         step = .idle
-        onReport?(.success("Signed out of GitHub",
+        onReport?(.success("Signed out of \(plan.host.name)",
                            plan.projects.isEmpty
                                ? "DOTFOLIO forgot @\(plan.login). No projects came from it."
                                : "DOTFOLIO forgot @\(plan.login) and deleted the \(plan.projects.count) projects imported from it, with their Keychain values.",
                            groups: plan.projects.isEmpty ? [] : [.init(title: "Deleted", names: plan.projects.map(\.name))]))
     }
 
-    private func forgetGitHub() {
-        try? tokens?.delete(Self.tokenRef)
-        UserDefaults.standard.removeObject(forKey: RepoConnections.gitHubUserKey)
+    /// Forgets the current host's token and account.
+    private func forget() {
+        try? tokens?.delete(host.tokenRef)
+        UserDefaults.standard.removeObject(forKey: host.userKey)
+        if host != .github { UserDefaults.standard.removeObject(forKey: RepoConnections.gitLabHostKey) }
         account = nil
         repos = []
     }
 
     private func storedToken() -> String? {
-        try? tokens?.string(for: Self.tokenRef)
+        try? tokens?.string(for: host.tokenRef)
     }
 
     // MARK: Repo picker
@@ -288,7 +339,7 @@ final class ConnectionFlowModel {
 
     func isImported(_ repo: GitHubRepo) -> Bool {
         guard let context else { return false }
-        return RepoImporter.existingProject(for: repo.fullName, provider: .github, context: context) != nil
+        return RepoImporter.existingProject(for: repo.fullName, provider: host.provider, context: context) != nil
     }
 
     /// Imports the picked repos, reading up to `parallelImports` .env.example
@@ -304,7 +355,9 @@ final class ConnectionFlowModel {
         importStats = ImportSummary()
         step = .importing(done: 0, total: total)
         let client = client
-        let source = (account?.login).map { AccountSignOut.source(provider: .github, login: $0) }
+        let gitLab = gitLabClient
+        let provider = host.provider
+        let source = (account?.login).map { AccountSignOut.source(provider: provider, login: $0) }
 
         task?.cancel()
         task = Task {
@@ -312,7 +365,11 @@ final class ConnectionFlowModel {
                 // Child tasks only fetch; all model updates happen back here on the main actor.
                 let fetch: @Sendable (GitHubRepo) async -> (GitHubRepo, GitHubFile?, Bool) = { repo in
                     do {
-                        let file = try await client.file(".env.example", in: repo.fullName, ref: repo.defaultBranch, token: token)
+                        let file = if let gitLab {
+                            try await gitLab.file(".env.example", in: repo.fullName, ref: repo.defaultBranch, token: token)
+                        } else {
+                            try await client.file(".env.example", in: repo.fullName, ref: repo.defaultBranch, token: token)
+                        }
                         return (repo, file, false)
                     } catch {
                         return (repo, nil, true)
@@ -329,7 +386,7 @@ final class ConnectionFlowModel {
                     if Task.isCancelled { group.cancelAll(); break }
                     inFlight.removeAll { $0 == repo.fullName }
                     let project = RepoImporter.importRepo(
-                        .init(provider: .github, fullName: repo.fullName, url: repo.htmlUrl,
+                        .init(provider: provider, fullName: repo.fullName, url: repo.htmlUrl,
                               defaultBranch: repo.defaultBranch, description: repo.description),
                         envExample: file?.text, envExampleSHA: file?.sha, source: source, context: context
                     )
@@ -360,7 +417,7 @@ final class ConnectionFlowModel {
             importStats.cancelled = Task.isCancelled
             if !Task.isCancelled {
                 step = .importFinished(importStats)
-                onReport?(Self.report(importStats))
+                onReport?(Self.report(importStats, from: host.name))
             }
         }
     }
@@ -373,16 +430,16 @@ final class ConnectionFlowModel {
         var summary = importStats
         summary.cancelled = true
         step = .importFinished(summary)
-        onReport?(Self.report(summary))
+        onReport?(Self.report(summary, from: host.name))
     }
 
     /// The dialog after importing repositories.
-    private static func report(_ s: ImportSummary) -> ResultReport {
+    private static func report(_ s: ImportSummary, from hostName: String) -> ResultReport {
         let projects = "\(s.projects) \(s.projects == 1 ? "project" : "projects")"
         if s.projects == 0 {
             return .nothing(s.cancelled ? "Import stopped" : "Nothing imported", "No repository was imported.")
         }
-        var message = "Imported \(projects) with \(s.variables) variables from GitHub."
+        var message = "Imported \(projects) with \(s.variables) variables from \(hostName)."
         if s.unreadable > 0 { message += " \(s.unreadable) .env.example \(s.unreadable == 1 ? "file" : "files") couldn’t be read." }
         if s.cancelled { message += " You stopped the import; what finished is kept." }
         return s.unreadable > 0
@@ -390,19 +447,80 @@ final class ConnectionFlowModel {
             : .success("Repositories imported", message)
     }
 
-    // MARK: GitLab (not wired yet)
+    // MARK: GitLab
 
+    /// gitlab.com, or the instance signed in to before. Signed in already →
+    /// straight to the repo picker; otherwise the token form.
     func connectGitLab() {
-        step = .failed(.other("GitLab sign-in is coming next. GitHub works now."))
+        startGitLab(at: RepoConnections.gitLabHost ?? GitLabClient.gitLabCom)
     }
 
+    /// Token form with an empty address, for a company or client server.
     func showGitLabHost() {
+        task?.cancel()
+        gitLabHost = ""
+        gitLabToken = ""
         step = .gitLabHost
     }
 
-    func connectSelfHostedGitLab() {
-        guard Self.validatedGitLabHost(gitLabHost) != nil else { return }
-        step = .failed(.other("Self-hosted GitLab sign-in is coming next. GitHub works now."))
+    private func startGitLab(at url: URL) {
+        task?.cancel()
+        host = .gitlab(url)
+        guard let token = storedToken() else {
+            gitLabHost = url.absoluteString
+            gitLabToken = ""
+            step = .gitLabHost
+            return
+        }
+        task = Task {
+            do {
+                try await loadRepos(token: token)
+                step = .choosingRepos
+            } catch GitHubError.unauthorized {
+                forget() // revoked or expired: ask for a new token
+                gitLabHost = url.absoluteString
+                step = .gitLabHost
+            } catch {
+                if !Task.isCancelled { step = .failed(Self.failure(for: error)) }
+            }
+        }
+    }
+
+    /// Checks the token against the instance, then keeps it in the Keychain.
+    func signInToGitLab() {
+        guard let url = Self.validatedGitLabHost(gitLabHost) else { return }
+        let token = gitLabToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else { return }
+        task?.cancel()
+        host = .gitlab(url)
+        task = Task {
+            do {
+                step = .loading("Contacting \(host.name)…")
+                _ = try await GitLabClient(baseURL: url).currentUser(token: token)
+                // SECURITY: the token lives only in the Keychain.
+                try tokens?.setString(token, for: host.tokenRef)
+                gitLabToken = ""
+                UserDefaults.standard.set(url.absoluteString, forKey: RepoConnections.gitLabHostKey)
+                try await loadRepos(token: token)
+                if let account {
+                    step = .connected(ConnectedAccount(
+                        provider: .gitlab, username: account.login, email: account.email, avatarURL: account.avatarUrl,
+                        repoCount: repos.count, privateRepoCount: repos.filter(\.isPrivate).count
+                    ))
+                    onReport?(.success("Signed in to \(host.name)", "Connected as @\(account.login), with \(repos.count) \(repos.count == 1 ? "project" : "projects") you can import (read-only)."))
+                }
+            } catch is CancellationError {
+            } catch {
+                if Task.isCancelled { return }
+                let failure: Failure = switch error {
+                case GitHubError.unauthorized: .other("GitLab didn’t accept this token. Check it’s still valid and has the read_api scope.")
+                case GitHubError.accessDenied: .other("This token can’t read the API. Create one with the read_api scope.")
+                default: Self.failure(for: error)
+                }
+                step = .failed(failure)
+                onReport?(.failed("Couldn’t sign in to \(host.name)", failure.message))
+            }
+        }
     }
 
     // MARK: Navigation
@@ -412,7 +530,10 @@ final class ConnectionFlowModel {
     }
 
     func retry() {
-        connectGitHub()
+        switch host {
+        case .github: connectGitHub()
+        case .gitlab(let url): startGitLab(at: url)
+        }
     }
 
     func cancel() {
@@ -440,13 +561,13 @@ final class ConnectionFlowModel {
         case GitHubError.unauthorized: .signedOut
         case is URLError: .network
         case let keychain as KeychainError: .other(keychain.userMessage)
-        case GitHubError.http(let status): .other("GitHub returned HTTP \(status).")
+        case GitHubError.http(let status): .other("The server returned HTTP \(status).")
         default: .other(error.localizedDescription)
         }
     }
 
     /// Accepts only https URLs with a host. SECURITY: plain http would send the
-    /// OAuth code and token in clear text.
+    /// token in clear text.
     static func validatedGitLabHost(_ input: String) -> URL? {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed),

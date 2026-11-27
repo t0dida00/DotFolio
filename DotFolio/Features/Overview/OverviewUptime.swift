@@ -1,9 +1,9 @@
 import DotFolioModels
 import SwiftUI
 
-/// Overview card: how many production sites are up or down, and for how
-/// long. Durations count from the first check that saw the current state,
-/// so they only cover the time DOTFOLIO was running.
+/// Overview card: how many production sites are up, slow or down, and how
+/// long a site has been down. That duration counts from the first failed check,
+/// so it only covers the time DOTFOLIO was running.
 struct UptimeCard: View {
     let summary: UptimeSummary
     let onOpen: (Project) -> Void
@@ -20,7 +20,7 @@ struct UptimeCard: View {
             if summary.total == 0 {
                 EmptyNote(text: "Add a Production URL to a project (✎ in its header) to see here whether it’s up.")
             } else {
-                // Refreshes the "for 23 min" durations once a minute.
+                // Refreshes "Down for 23 min" once a minute.
                 TimelineView(.periodic(from: .now, by: 60)) { context in
                     VStack(spacing: DS.Space.xs) {
                         ForEach(summary.projects(activeFilter)) { project in
@@ -72,8 +72,6 @@ private struct UptimeRow: View {
     let now: Date
 
     var body: some View {
-        Circle().fill(project.health.color).frame(width: 8, height: 8)
-            .accessibilityHidden(true)
         ProjectTile(project: project, size: 24)
         VStack(alignment: .leading, spacing: DS.Space.xxs) {
             Text(project.name).lineLimit(1)
@@ -85,10 +83,15 @@ private struct UptimeRow: View {
         }
         Spacer(minLength: DS.Space.m)
         VStack(alignment: .trailing, spacing: DS.Space.xxs) {
-            Text(state)
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(project.health == .down ? AnyShapeStyle(DS.Status.danger) : AnyShapeStyle(.primary))
-                .lineLimit(1)
+            // "● Up · 93 ms": the status dot sits right before its word.
+            HStack(spacing: DS.Space.xs + 2) {
+                Circle().fill(project.health.color).frame(width: 8, height: 8)
+                    .accessibilityHidden(true)
+                Text(state)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(project.health == .down ? AnyShapeStyle(DS.Status.danger) : AnyShapeStyle(.primary))
+                    .lineLimit(1)
+            }
             if let checked = project.healthCheckedAt {
                 Text("Checked \(checked.formatted(.relative(presentation: .named, unitsStyle: .abbreviated)))")
                     .font(.caption)
@@ -98,20 +101,19 @@ private struct UptimeRow: View {
         }
     }
 
-    /// "Up for 2 d 4 h · 240 ms", "Slow for 1 h · 4.1 s", "Down for 23 min · HTTP 503", "Not checked yet".
+    /// "Up · 240 ms", "Slow · 4.1 s", "Down for 23 min · HTTP 503", "Not checked yet".
+    /// Only an outage shows how long it has lasted.
     private var state: String {
-        let duration = project.healthDuration(now: now).map(DowntimeText.string)
+        let time = project.healthResponseTime.map(HealthText.responseTime)
         switch project.health {
         case .unknown:
             return "Not checked yet"
         case .up:
-            let time = project.healthResponseTime.map(HealthText.responseTime)
-            return [duration.map { "Up for \($0)" } ?? "Up", time].compactMap { $0 }.joined(separator: " · ")
+            return ["Up", time].compactMap { $0 }.joined(separator: " · ")
         case .slow:
-            // The clock is the up time; "slow" is about the last answer only.
-            let time = project.healthResponseTime.map(HealthText.responseTime)
-            return ["Slow", time, duration.map { "up for \($0)" }].compactMap { $0 }.joined(separator: " · ")
+            return ["Slow", time].compactMap { $0 }.joined(separator: " · ")
         case .down:
+            let duration = project.healthDuration(now: now).map(DowntimeText.string)
             return [duration.map { "Down for \($0)" } ?? "Down", project.healthError].compactMap { $0 }.joined(separator: " · ")
         }
     }

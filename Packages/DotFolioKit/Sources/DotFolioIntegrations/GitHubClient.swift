@@ -14,15 +14,28 @@ public struct GitHubDeviceCode: Decodable, Equatable, Sendable {
     public let interval: Int
 }
 
+/// A signed-in account. `GitLabClient` returns the same shape.
 public struct GitHubUser: Decodable, Equatable, Sendable {
     public let login: String
     public let name: String?
     public let email: String?
     public let avatarUrl: URL?
+
+    public init(login: String, name: String?, email: String?, avatarUrl: URL?) {
+        self.login = login
+        self.name = name
+        self.email = email
+        self.avatarUrl = avatarUrl
+    }
 }
 
+/// A repository the signed-in account can read. `GitLabClient` maps GitLab
+/// projects to the same shape, so the picker and importer serve both hosts.
 public struct GitHubRepo: Decodable, Identifiable, Hashable, Sendable {
-    public struct Owner: Decodable, Hashable, Sendable { public let login: String }
+    public struct Owner: Decodable, Hashable, Sendable {
+        public let login: String
+        public init(login: String) { self.login = login }
+    }
 
     public let id: Int
     public let name: String
@@ -35,13 +48,32 @@ public struct GitHubRepo: Decodable, Identifiable, Hashable, Sendable {
     public let owner: Owner
 
     public var isPrivate: Bool { `private` }
+
+    public init(id: Int, name: String, fullName: String, htmlUrl: URL, isPrivate: Bool, defaultBranch: String,
+                description: String?, updatedAt: Date?, owner: String) {
+        self.id = id
+        self.name = name
+        self.fullName = fullName
+        self.htmlUrl = htmlUrl
+        self.private = isPrivate
+        self.defaultBranch = defaultBranch
+        self.description = description
+        self.updatedAt = updatedAt
+        self.owner = Owner(login: owner)
+    }
 }
 
 public struct GitHubFile: Equatable, Sendable {
     public let text: String
     public let sha: String
+
+    public init(text: String, sha: String) {
+        self.text = text
+        self.sha = sha
+    }
 }
 
+/// Errors from either host's client (GitLab reuses them).
 public enum GitHubError: Error, Equatable, Sendable {
     case notConfigured
     case expiredCode

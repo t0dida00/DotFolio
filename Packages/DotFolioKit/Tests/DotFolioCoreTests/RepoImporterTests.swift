@@ -51,3 +51,24 @@ struct RepoImporterTests {
         #expect(RepoImporter.existingProject(for: "ACME/shop-web", provider: .github, context: context) != nil)
     }
 }
+
+@MainActor
+struct RepoImporterGitLabTests {
+    @Test func selfHostedNestedGroupImportsAsGitLab() throws {
+        let context = ModelContext(try DotFolioSchema.makeContainer(inMemory: true))
+        let repo = RepoImporter.RepoInfo(provider: .gitlab, fullName: "acme/web/shop",
+                                         url: URL(string: "https://git.example.com/acme/web/shop")!,
+                                         defaultBranch: "develop", description: nil)
+        let source = AccountSignOut.source(provider: .gitlab, login: "khoa")
+        let project = RepoImporter.importRepo(repo, envExample: "API_KEY=\n", envExampleSHA: "blob1", source: source, context: context)
+        #expect(project.name == "shop")
+        #expect(project.provider == .gitlab, "a self-hosted host isn't recognized from the URL, so the importer's provider wins")
+        #expect(project.repoFullName == "acme/web/shop")
+        #expect(project.defaultBranch == "develop")
+        #expect(project.importedFrom == source)
+        #expect(RepoImporter.existingProject(for: "acme/web/shop", provider: .gitlab, context: context) === project)
+        #expect(RepoImporter.existingProject(for: "acme/web/shop", provider: .github, context: context) == nil)
+        let projects = AccountSignOut.projects(provider: .gitlab, login: "khoa", repoFullNames: [], context: context)
+        #expect(projects.map(\.name) == ["shop"], "sign-out finds it by source")
+    }
+}

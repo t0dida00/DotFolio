@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Live import screen: GitHub → DotFolio animation, progress, running
+/// Live import screen: GitHub/GitLab → DotFolio animation, progress, running
 /// counters, and a terminal-style log of each repository.
 struct ImportProgressView: View {
     let model: ConnectionFlowModel
@@ -12,9 +12,9 @@ struct ImportProgressView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.xl) {
             HStack(spacing: DS.Space.l) {
-                TransferGraphic()
+                TransferGraphic(brand: model.host.brand)
                 VStack(alignment: .leading, spacing: DS.Space.xs) {
-                    Text("Importing from GitHub")
+                    Text("Importing from \(model.host.name)")
                         .font(DS.Font.pageTitle)
                     Text("Reading each repository’s .env.example to list the variables it needs. Values are never imported.")
                         .foregroundStyle(.secondary)
@@ -104,12 +104,14 @@ struct ImportFinishedView: View {
 
 // MARK: - Pieces
 
-/// GitHub mark → animated dots → DotFolio mark.
+/// Host mark (GitHub or GitLab) → animated dots → DotFolio mark.
 private struct TransferGraphic: View {
+    let brand: BrandMark
+
     var body: some View {
         HStack(spacing: DS.Space.s) {
-            TintedIcon(tint: DS.Palette.violet, size: 52) {
-                BrandMark.github.image.resizable().scaledToFit()
+            TintedIcon(tint: brand == .github ? DS.Palette.violet : DS.Palette.orange, size: 52) {
+                brand.image.resizable().scaledToFit()
             }
 
             TimelineView(.animation(minimumInterval: 0.25)) { context in
