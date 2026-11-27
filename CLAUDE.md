@@ -80,20 +80,25 @@ Whenever new work lands on `main` (a merge or a push), publish a new version in 
    git tag -a vX.Y.Z -m "Dotfolio X.Y.Z"
    git push origin main vX.Y.Z
    ```
-6. **Build the app** (Release configuration) and zip it:
+6. **Build the app** (Release configuration), then pack it as a disk image and a zip:
    ```bash
-   xcodebuild -project DotFolio.xcodeproj -scheme DotFolio -configuration Release -derivedDataPath build/release build
+   xcodebuild -project DotFolio.xcodeproj -scheme DotFolio -configuration Release -derivedDataPath build/release -allowProvisioningUpdates build
+   scripts/make-dmg.sh X.Y.Z        # → build/Dotfolio-X.Y.Z.dmg (app + Applications link)
    ditto -c -k --keepParent build/release/Build/Products/Release/Dotfolio.app build/Dotfolio-X.Y.Z.zip
    ```
-7. **Publish the GitHub Release** for the tag with the notes and the zip (tag format `vX.Y.Z` — `UpdateChecker` strips the `v`):
+7. **Publish the GitHub Release** for the tag with the notes, the DMG and the zip (tag format `vX.Y.Z` — `UpdateChecker` strips the `v`):
    ```bash
-   gh release create vX.Y.Z build/Dotfolio-X.Y.Z.zip --title "Dotfolio X.Y.Z" --notes-file <notes.md>
+   gh release create vX.Y.Z build/Dotfolio-X.Y.Z.dmg build/Dotfolio-X.Y.Z.zip --title "Dotfolio X.Y.Z" --notes-file <notes.md>
    ```
 8. **Check**: an older build’s *Check for Updates…* now offers X.Y.Z.
 
 Never skip a release after changing `main`, and never re-use or move a published tag. Pushing tags and publishing releases are outward-facing: confirm with the user before running steps 5–7.
 
-Until the app is signed with a paid Developer ID and notarized, the zip is for the owner’s own Macs (Gatekeeper will warn elsewhere) and updates are manual (download, replace the app).
+Until the app is signed with a paid Developer ID and notarized, the DMG and zip are for the owner’s own Mac only: the free Personal Team profile lists one device and expires after 7 days, so a downloaded build may stop opening after that (rebuild, or run from Xcode). Updates are manual (download, replace the app).
+
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`: `swift test` in `Packages/DotFolioKit`, then `xcodegen generate` and an unsigned Debug build. Wait for it to pass before merging. It doesn't sign, package or publish anything.
 
 ## After every change: restart the app once
 

@@ -46,10 +46,10 @@ Dotfolio is the missing one: native, local, organized around your projects, and 
 
 | Platform | Status | Install |
 | --- | --- | --- |
-| macOS 26+ | Stable | Download the `.zip` from [GitHub Releases](https://github.com/t0dida00/DotFolio/releases/latest) |
+| macOS 26+ | Stable | Download the `.dmg` (or `.zip`) from [GitHub Releases](https://github.com/t0dida00/DotFolio/releases/latest) |
 | Linux / Windows | Not planned | Dotfolio relies on the macOS Keychain and Touch ID |
 
-Unzip, move **Dotfolio.app** to Applications, and open it. Builds aren't notarized yet, so the first time macOS asks for confirmation: right-click ▸ Open, or allow it in System Settings ▸ Privacy & Security.
+Open the `.dmg` and drag **Dotfolio** onto **Applications** (or unzip the `.zip` and move it there), then open it. Release builds aren't signed with a Developer ID or notarized yet: they're made for the author's own Mac and may not open on others. To use Dotfolio on your Mac today, build it from source in Xcode (⌘R).
 
 **Dotfolio ▸ Check for Updates…** tells you when a new version is out. Replace the app; your projects and Keychain values carry over.
 
