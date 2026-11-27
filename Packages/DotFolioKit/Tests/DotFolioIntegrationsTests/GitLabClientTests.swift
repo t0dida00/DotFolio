@@ -82,6 +82,6 @@ struct GitLabClientTests {
 
     @Test func tokenPageHasNameAndScope() {
         #expect(GitLabClient.tokenPage(for: GitLabClient.gitLabCom).absoluteString
-                == "https://gitlab.com/-/user_settings/personal_access_tokens?name=DOTFOLIO&scopes=read_api")
+                == "https://gitlab.com/-/user_settings/personal_access_tokens?name=Dotfolio&scopes=read_api")
     }
 }

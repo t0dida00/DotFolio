@@ -58,7 +58,7 @@ enum ProjectFolderPicker {
         panel.allowsMultipleSelection = false
         panel.showsHiddenFiles = true
         panel.prompt = "Import"
-        panel.message = "Choose a project folder. DOTFOLIO finds its .env files and asks which to import."
+        panel.message = "Choose a project folder. Dotfolio finds its .env files and asks which to import."
         guard panel.runModal() == .OK else { return nil }
         return panel.url
     }

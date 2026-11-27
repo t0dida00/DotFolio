@@ -64,7 +64,7 @@ struct UpdateResultSheet: View {
         switch center.state {
         case .idle, .checking: "Checking for updates…"
         case .finished(.upToDate): "You’re up to date"
-        case .finished(.available(let release)): "DOTFOLIO \(release.version) is available"
+        case .finished(.available(let release)): "Dotfolio \(release.version) is available"
         case .finished(.noReleases): "You’re up to date"
         case .failed: "Couldn’t check for updates"
         }
@@ -73,9 +73,9 @@ struct UpdateResultSheet: View {
     private var subtitle: String {
         switch center.state {
         case .idle, .checking: "Asking GitHub for the latest release."
-        case .finished(.upToDate(let current)): "DOTFOLIO \(current) is the newest version."
+        case .finished(.upToDate(let current)): "Dotfolio \(current) is the newest version."
         case .finished(.available): "You have \(UpdateCenter.currentVersion). Download the new version from GitHub."
-        case .finished(.noReleases): "DOTFOLIO \(UpdateCenter.currentVersion) — no newer release has been published."
+        case .finished(.noReleases): "Dotfolio \(UpdateCenter.currentVersion) — no newer release has been published."
         case .failed(let message): message
         }
     }
@@ -92,7 +92,7 @@ struct WhatsNewSheet: View {
             HStack(spacing: DS.Space.m) {
                 AppMark(size: 52)
                 VStack(alignment: .leading, spacing: DS.Space.xs) {
-                    Text("What’s New in DOTFOLIO \(UpdateCenter.currentVersion)").font(DS.Font.sheetTitle)
+                    Text("What’s New in Dotfolio \(UpdateCenter.currentVersion)").font(DS.Font.sheetTitle)
                     Text(UpdateCenter.versionLabel).foregroundStyle(.secondary)
                 }
             }

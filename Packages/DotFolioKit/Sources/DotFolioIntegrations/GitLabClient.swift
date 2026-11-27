@@ -22,7 +22,7 @@ public struct GitLabClient: Sendable {
 
     /// Where the user creates a token, with name and scope filled in.
     public static func tokenPage(for baseURL: URL) -> URL {
-        URL(string: root(baseURL) + "/-/user_settings/personal_access_tokens?name=DOTFOLIO&scopes=read_api")!
+        URL(string: root(baseURL) + "/-/user_settings/personal_access_tokens?name=Dotfolio&scopes=read_api")!
     }
 
     public func currentUser(token: String) async throws -> GitHubUser {

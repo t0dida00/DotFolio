@@ -12,7 +12,7 @@ struct DotFolioApp: App {
     @State private var autoLock: SessionAutoLock?
     /// Production uptime checks; runs from launch, window open or not.
     @State private var health: HealthMonitor
-    /// "Show in Menu Bar" (DOTFOLIO menu); not a secret.
+    /// "Show in Menu Bar" (Dotfolio menu); not a secret.
     @AppStorage("menuBarExtra") private var showsMenuBarExtra = true
 
     init() {
@@ -21,7 +21,7 @@ struct DotFolioApp: App {
         } catch {
             // Metadata store unreadable: fail loudly rather than silently starting empty
             // (an empty store would look like data loss to the user).
-            fatalError("Could not open the DOTFOLIO database: \(error)")
+            fatalError("Could not open the Dotfolio database: \(error)")
         }
         let navigation = AppNavigation()
         _navigation = State(initialValue: navigation)
@@ -31,7 +31,7 @@ struct DotFolioApp: App {
     }
 
     var body: some Scene {
-        // "main": the menu bar panel's Open DOTFOLIO reopens it by this id.
+        // "main": the menu bar panel's Open Dotfolio reopens it by this id.
         WindowGroup(id: "main") {
             RootView()
                 .environment(navigation)
@@ -62,7 +62,7 @@ struct DotFolioApp: App {
             // scene yet, so an .appSettings anchor may not exist).
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…", action: updates.checkForUpdates)
-                Button("What’s New in DOTFOLIO") { updates.isShowingWhatsNew = true }
+                Button("What’s New in Dotfolio") { updates.isShowingWhatsNew = true }
                 Divider()
                 Button("Suggest Sources…") { navigation.isSuggestingSources = true }
                 Button("Verify Data…") { navigation.isVerifyingData = true }
@@ -90,7 +90,7 @@ struct DotFolioApp: App {
                 .task { await runAutoLock() }
         } label: {
             // A site down shows in the menu bar too, with its own symbol.
-            Label("DOTFOLIO", systemImage: health.downProjects.isEmpty ? "lock.doc" : "exclamationmark.triangle.fill")
+            Label("Dotfolio", systemImage: health.downProjects.isEmpty ? "lock.doc" : "exclamationmark.triangle.fill")
         }
         .menuBarExtraStyle(.window)
     }

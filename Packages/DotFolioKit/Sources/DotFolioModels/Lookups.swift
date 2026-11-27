@@ -174,7 +174,7 @@ public struct SourceUsage: Identifiable {
 }
 
 /// Where a project comes from, shown as its tile. Only `.local` projects have
-/// a folder on this Mac whose .env files DOTFOLIO can read (and later sync).
+/// a folder on this Mac whose .env files Dotfolio can read (and later sync).
 public enum ProjectOrigin: Sendable {
     /// Linked to a folder on this Mac (dropped, or chosen as Local folder).
     case local

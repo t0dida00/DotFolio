@@ -33,7 +33,7 @@ struct ProjectInfoEditor: View {
 
     private var productionHint: String {
         if let productionFailure { return productionFailure.message }
-        return "The live site. DOTFOLIO checks it every 10 minutes and notifies you when it goes down."
+        return "The live site. Dotfolio checks it every 10 minutes and notifies you when it goes down."
     }
 
     private var linkIsInvalid: Bool {

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="DotFolio/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" height="128" alt="DOTFOLIO">
+  <img src="DotFolio/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" height="128" alt="Dotfolio">
 </p>
 
-<h1 align="center">DOTFOLIO</h1>
+<h1 align="center">Dotfolio</h1>
 
 <p align="center">
   Every <code>.env</code>, safe in your Keychain.<br>
@@ -23,16 +23,16 @@
 ---
 
 <p align="center">
-  <img src=".github/assets/overview.png" width="800" alt="DOTFOLIO Overview: projects, variables, providers and accounts at a glance">
+  <img src=".github/assets/overview.png" width="800" alt="Dotfolio Overview: projects, variables, providers and accounts at a glance">
 </p>
 
 ## About
 
-DOTFOLIO is what I wanted my `.env` files to be: in one place, locked, and still easy to use. Each value lives in the macOS Keychain behind Touch ID. Next to it, DOTFOLIO keeps what you forget months later: what the key is for, who provides it, which account created it, and where to manage it.
+Dotfolio is what I wanted my `.env` files to be: in one place, locked, and still easy to use. Each value lives in the macOS Keychain behind Touch ID. Next to it, Dotfolio keeps what you forget months later: what the key is for, who provides it, which account created it, and where to manage it.
 
 It's built with Swift 6, SwiftUI and SwiftData. Secret values never touch the database or the logs, and reach a file only when you export one.
 
-## Why DOTFOLIO
+## Why Dotfolio
 
 Your options for project secrets today:
 
@@ -40,24 +40,24 @@ Your options for project secrets today:
 - **Password managers**: they keep a value safe, but don't know your projects, environments or which provider a key belongs to.
 - **Cloud secret managers** (Doppler, Infisical, Vault): built for teams and servers; your values live on someone else's infrastructure.
 
-DOTFOLIO is the missing one: native, local, organized around your projects, and open source.
+Dotfolio is the missing one: native, local, organized around your projects, and open source.
 
 ## Installation
 
 | Platform | Status | Install |
 | --- | --- | --- |
 | macOS 26+ | Stable | Download the `.zip` from [GitHub Releases](https://github.com/t0dida00/DotFolio/releases/latest) |
-| Linux / Windows | Not planned | DOTFOLIO relies on the macOS Keychain and Touch ID |
+| Linux / Windows | Not planned | Dotfolio relies on the macOS Keychain and Touch ID |
 
-Unzip, move **DOTFOLIO.app** to Applications, and open it. Builds aren't notarized yet, so the first time macOS asks for confirmation: right-click ▸ Open, or allow it in System Settings ▸ Privacy & Security.
+Unzip, move **Dotfolio.app** to Applications, and open it. Builds aren't notarized yet, so the first time macOS asks for confirmation: right-click ▸ Open, or allow it in System Settings ▸ Privacy & Security.
 
-**DOTFOLIO ▸ Check for Updates…** tells you when a new version is out. Replace the app; your projects and Keychain values carry over.
+**Dotfolio ▸ Check for Updates…** tells you when a new version is out. Replace the app; your projects and Keychain values carry over.
 
 ## Features
 
 - Projects with development, staging and production, as a table or as a `.env` file you can edit.
 - Import a GitHub repository and its `.env.example`, read-only.
-- Drop a project folder: DOTFOLIO finds its `.env*` files and asks which to import.
+- Drop a project folder: Dotfolio finds its `.env*` files and asks which to import.
 - Drop `.env` files on a project or the Library: values already there are never overwritten.
 - Tables open read-only: double-click a row to copy it as `KEY=value #Service/Provider/Account/Link`.
 - Show Values reveals a whole table after one Touch ID prompt; long values open in a larger editor.
@@ -94,7 +94,7 @@ Values never leave your Mac, so wiping or losing it loses them. Keep an export o
 
 ## Free and open source
 
-DOTFOLIO is free, with no account, subscription or telemetry. The code is MIT-licensed; use it, fork it, ship your own build. If you do, create your own GitHub App for sign-in (see [Build and contribute](#build-and-contribute)).
+Dotfolio is free, with no account, subscription or telemetry. The code is MIT-licensed; use it, fork it, ship your own build. If you do, create your own GitHub App for sign-in (see [Build and contribute](#build-and-contribute)).
 
 ## Build and contribute
 
@@ -117,7 +117,7 @@ Keep views thin and put logic in `DotFolioKit` with tests. Open an issue before 
 ## Docs and community
 
 - [Releases](https://github.com/t0dida00/DotFolio/releases): what changed in each version
-- [Issues](https://github.com/t0dida00/DotFolio/issues): bugs and feature requests. Include your macOS version, the DOTFOLIO version (shown under the logo) and steps to reproduce.
+- [Issues](https://github.com/t0dida00/DotFolio/issues): bugs and feature requests. Include your macOS version, the Dotfolio version (shown under the logo) and steps to reproduce.
 - [Report a vulnerability](https://github.com/t0dida00/DotFolio/security/advisories/new) privately; please don't open a public issue for security problems.
 
 ## Contributors
@@ -140,4 +140,4 @@ Want to join them? Read [Build and contribute](#build-and-contribute).
 
 ## License
 
-DOTFOLIO is licensed under the [MIT License](LICENSE).
+Dotfolio is licensed under the [MIT License](LICENSE).

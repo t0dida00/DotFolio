@@ -8,7 +8,7 @@ struct BrandHeader: View {
         VStack(spacing: DS.Space.s) {
             AppMark(size: 64)
                 .padding(.bottom, DS.Space.xs)
-            Text("DOTFOLIO")
+            Text("Dotfolio")
                 .font(.title3.weight(.semibold))
             Text("Every .env, safe in your Keychain.")
                 .font(.callout)
