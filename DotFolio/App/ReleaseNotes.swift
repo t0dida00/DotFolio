@@ -7,6 +7,12 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "2.4.2", highlights: [
+            ("externaldrive", "Install from a disk image",
+             "Each release now comes as a .dmg too: open it and drag Dotfolio onto Applications. The zip is still there."),
+            ("checkmark.seal", "Checked on every change",
+             "Every change to Dotfolio is now tested and built automatically before it ships."),
+        ]),
         Entry(version: "2.4.1", highlights: [
             ("textformat", "Now called Dotfolio",
              "The app's name is written Dotfolio everywhere: the Dock, menus, the menu bar and notifications. Your projects, Keychain values and settings carry over unchanged. Installing by hand? Delete the old DOTFOLIO app first, then copy Dotfolio into Applications."),
