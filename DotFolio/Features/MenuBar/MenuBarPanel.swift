@@ -42,6 +42,26 @@ struct MenuBarPanel: View {
 
             Divider()
 
+            // Sites down right now, above everything else (the menu bar icon
+            // turns into a warning sign while there are any).
+            let down = projects.filter { $0.health == .down }.sorted { $0.name < $1.name }
+            if !down.isEmpty {
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                    Label(down.count == 1 ? "1 site down" : "\(down.count) sites down", systemImage: "xmark.octagon.fill")
+                        .font(DS.Font.label)
+                        .foregroundStyle(DS.Status.danger)
+                        .padding(.horizontal, DS.Space.s)
+                    ForEach(down) { project in
+                        MenuBarDownRow(project: project) {
+                            navigation.projectToOpen = project.id
+                            openMainWindow()
+                        }
+                    }
+                }
+                .padding(DS.Space.s)
+                Divider()
+            }
+
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.Space.xxs) {
                     if query.isEmpty {
@@ -176,5 +196,47 @@ private struct MenuBarRow: View {
         case .action(let action):
             TintedIcon(symbol: action.symbol, tint: DS.Palette.violet, size: 24)
         }
+    }
+}
+
+/// A site that's down: name, address, for how long and why. Opens the project.
+private struct MenuBarDownRow: View {
+    let project: Project
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: DS.Space.s) {
+                ProjectTile(project: project, size: 24)
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                    Text(project.name).lineLimit(1)
+                    Text(project.productionDisplayName ?? "")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: DS.Space.s)
+                TimelineView(.periodic(from: .now, by: 60)) { context in
+                    Text(detail(now: context.date))
+                        .font(.caption)
+                        .foregroundStyle(DS.Status.danger)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, DS.Space.s)
+            .padding(.vertical, DS.Space.xs)
+            .background(.quaternary.opacity(hovering ? DS.Fill.control : 0), in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .clickableCursor()
+    }
+
+    /// "23 min · HTTP 503"
+    private func detail(now: Date) -> String {
+        [project.healthDuration(now: now).map(DowntimeText.string), project.healthError]
+            .compactMap { $0 }.joined(separator: " · ")
     }
 }

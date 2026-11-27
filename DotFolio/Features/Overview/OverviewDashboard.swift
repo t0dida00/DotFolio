@@ -28,6 +28,8 @@ struct OverviewDashboard: View {
 
                 health(stats)
 
+                UptimeCard(summary: UptimeSummary(projects: projects), onOpen: onOpenProject)
+
                 // Side by side, half the width each; both as tall as the taller one.
                 HStack(alignment: .top, spacing: DS.Space.l) {
                     Card(title: "Providers in use", subtitle: "Top 5 by variables, longest bar = most used") {

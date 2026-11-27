@@ -28,6 +28,7 @@ public enum DataEraser {
         try context.fetch(FetchDescriptor<Project>()).forEach(context.delete)
         try context.fetch(FetchDescriptor<ServiceProject>()).forEach(context.delete)
         try context.fetch(FetchDescriptor<Account>()).forEach(context.delete)
+        try context.fetch(FetchDescriptor<AppNotification>()).forEach(context.delete)
         try context.save()
     }
 }

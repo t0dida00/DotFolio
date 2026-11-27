@@ -104,3 +104,20 @@ struct ProjectCreatorTests {
         #expect(!d.canCreate)
     }
 }
+
+@MainActor
+struct ProjectCreatorProductionTests {
+    @Test func savesTheProductionURLAndBlocksInsecureOnes() throws {
+        let context = ModelContext(try DotFolioSchema.makeContainer(inMemory: true))
+        var draft = ProjectDraft()
+        draft.name = "Shop"
+        draft.production = "http://shop.example.com"
+        #expect(draft.productionIssue == .insecureProductionURL)
+        #expect(!draft.canCreate)
+        draft.production = "shop.example.com"
+        #expect(draft.canCreate)
+        let project = try ProjectCreator.create(draft, includeValues: false, context: context, secrets: InMemorySecretStore())
+        #expect(project.productionURL?.absoluteString == "https://shop.example.com")
+        #expect(project.health == .unknown)
+    }
+}

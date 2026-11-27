@@ -7,6 +7,14 @@ enum ReleaseNotes {
     }
 
     static let entries: [Entry] = [
+        Entry(version: "2.3.0", highlights: [
+            ("globe", "Is the live site up?",
+             "Give a project its Production URL (✎, or when you create it) and its address shows under the name with a status: Up, Slow (over 3 s) or Down, with the reason. Click the status for details and Check Now."),
+            ("bell", "Notifications",
+             "Checked every 10 minutes while DOTFOLIO is open, even from the menu bar. You're notified when a site goes down or comes back, and the bell at the top right keeps the list. Offline? Checks wait, so there are no false alarms."),
+            ("chart.bar", "Uptime on the Overview",
+             "A Production uptime card shows each site and how long it's been up or down, filtered by status. Sites that are down also show in the menu bar."),
+        ]),
         Entry(version: "2.2.0", highlights: [
             ("arrow.clockwise", "Reload from Folder",
              "Changed a local project's .env files? The ↻ button next to edit reads them again and lists what changed in each environment — new names, changed values and sources, names no longer in the file — for you to review before anything is applied. Values are compared with Touch ID and never shown; nothing is deleted unless you tick it."),

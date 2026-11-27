@@ -15,6 +15,7 @@ struct NewProjectForm: View {
     /// Back to the project list (after Create or Cancel).
     let onClose: () -> Void
     @Environment(\.secretStore) private var secrets
+    @Environment(HealthMonitor.self) private var health
 
     @State private var draft = ProjectDraft()
     @State private var selection: Set<EnvDraftRow.ID> = []
@@ -101,6 +102,14 @@ struct NewProjectForm: View {
                 TextField("", text: $draft.link)
                     .textFieldStyle(.roundedBorder)
                     .fieldHint(linkHint, isError: draft.linkIsInvalid)
+            }
+            GridRow {
+                fieldLabel("Production URL", optional: true)
+                TextField("", text: $draft.production)
+                    .textFieldStyle(.roundedBorder)
+                    .fieldHint(draft.productionIssue?.message
+                               ?? "The live site. DOTFOLIO checks it every 10 minutes and notifies you when it goes down.",
+                               isError: draft.productionIssue != nil)
             }
         }
     }
@@ -336,6 +345,10 @@ struct NewProjectForm: View {
         do {
             let project = try ProjectCreator.create(draft, includeValues: includeValues, context: context, secrets: secrets)
             let count = Set(project.allVariables.map(\.key)).count
+            if project.productionURL != nil {
+                health.requestNotificationPermission()
+                Task { await health.check(project) }
+            }
             onClose()
             navigation.projectToOpen = project.id
             navigation.show(.success("Project created",
@@ -352,7 +365,8 @@ struct NewProjectForm: View {
 
     /// Asks before throwing away typed input; closes right away otherwise.
     private func cancel() {
-        let hasInput = !draft.trimmedName.isEmpty || !draft.summary.isEmpty || !draft.link.isEmpty || !draft.environmentsWithRows.isEmpty
+        let hasInput = !draft.trimmedName.isEmpty || !draft.summary.isEmpty || !draft.link.isEmpty || !draft.production.isEmpty
+            || !draft.environmentsWithRows.isEmpty
         if hasInput { confirmDiscard = true } else { onClose() }
     }
 

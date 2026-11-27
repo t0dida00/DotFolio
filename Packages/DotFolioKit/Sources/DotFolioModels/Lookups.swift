@@ -5,6 +5,7 @@ import SwiftData
 public enum DotFolioSchema {
     public static let models: [any PersistentModel.Type] = [
         Account.self, ServiceProject.self, Project.self, ProjectEnvironment.self, Variable.self,
+        AppNotification.self,
     ]
 
     public static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {

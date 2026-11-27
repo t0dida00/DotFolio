@@ -133,6 +133,9 @@ struct ProjectBrowser: View {
         .toolbar {
             ToolbarItem(placement: .navigation) { BrowserSortMenu(sort: $sort) }
             ToolbarItem(placement: .primaryAction) { BrowserSearchField(query: $query) }
+            // Bell at the far right, apart from sort and search.
+            ToolbarSpacer(.flexible, placement: .primaryAction)
+            ToolbarItem(placement: .primaryAction) { NotificationBell() }
         }
         // No auto-open: with no tab open the Overview dashboard is the home view.
         .onChange(of: projects.count) { _, _ in tabs.prune(keeping: Set(projects.map(\.persistentModelID))) }

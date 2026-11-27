@@ -164,6 +164,20 @@ public final class Project {
     /// Nil for projects created by hand. Signing out removes these projects.
     public var importedFrom: String?
 
+    /// The live site, checked every 10 minutes while the app is open
+    /// (`ProjectHealth`). Not a secret: a public address.
+    public var productionURL: URL?
+    /// Result of the last check; see `health`. Only the latest one is kept.
+    public var healthCheckedAt: Date?
+    public var healthStatusCode: Int?
+    public var healthResponseTime: Double?
+    public var healthError: String?
+    /// Set when the site went down, cleared when it answers again.
+    public var healthDownSince: Date?
+    /// Set when the site was first seen up (or came back), cleared when it
+    /// goes down. With `healthDownSince`: how long the current state lasts.
+    public var healthUpSince: Date?
+
     @Relationship(deleteRule: .cascade, inverse: \ProjectEnvironment.project)
     public var environments: [ProjectEnvironment]? = []
 
